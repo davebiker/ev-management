@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>PHEV + BEV Smart Charging — Simulátor úspor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 /* ═══════ DARK ═══════ */
@@ -19,7 +19,7 @@
   --green:#22d3a0; --red:#f43f5e; --yellow:#fbbf24;
   --text:#cdd6e8; --text-strong:#ffffff; --dim:#7a9ab5; --dim2:#5a7a95;
   --grid:#1c2535; --shadow:none;
-  --mono:'Share Tech Mono',monospace; --ui:'Barlow Condensed',sans-serif;
+  --mono:'JetBrains Mono',monospace; --ui:'Inter',sans-serif;
 }
 /* ═══════ LIGHT ═══════ */
 body.light{
@@ -881,15 +881,15 @@ function chartDefaults(){
   return{
     responsive:true,maintainAspectRatio:false,animation:{duration:220},
     plugins:{
-      legend:{labels:{color:dim,font:{family:'Share Tech Mono',size:12},boxWidth:14}},
+      legend:{labels:{color:dim,font:{family:'JetBrains Mono',size:12},boxWidth:14}},
       tooltip:{backgroundColor:panel,borderColor:cv('--border'),borderWidth:1,
         titleColor:acc,bodyColor:text,
-        titleFont:{family:'Share Tech Mono',size:13},bodyFont:{family:'Share Tech Mono',size:12}}
+        titleFont:{family:'JetBrains Mono',size:13},bodyFont:{family:'JetBrains Mono',size:12}}
     },
     scales:{
-      x:{grid:{color:grid},ticks:{color:dim,font:{family:'Share Tech Mono',size:11},maxRotation:0,
+      x:{grid:{color:grid},ticks:{color:dim,font:{family:'JetBrains Mono',size:11},maxRotation:0,
         callback:(v,i,arr)=>{const l=arr[i]?.label??'';return l.endsWith(':00')||l.endsWith(':30')?l:null;}}},
-      y:{grid:{color:grid},ticks:{color:dim,font:{family:'Share Tech Mono',size:11}}}
+      y:{grid:{color:grid},ticks:{color:dim,font:{family:'JetBrains Mono',size:11}}}
     }
   };
 }
@@ -898,7 +898,7 @@ function mkChart(id,type,labels,datasets,yLabel=''){
   if(charts[id]) charts[id].destroy();
   const ctx=document.getElementById(id);if(!ctx)return;
   const cfg=chartDefaults();
-  if(yLabel) cfg.scales.y.title={display:true,text:yLabel,color:cv('--dim'),font:{family:'Share Tech Mono',size:12}};
+  if(yLabel) cfg.scales.y.title={display:true,text:yLabel,color:cv('--dim'),font:{family:'JetBrains Mono',size:12}};
   charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:cfg});
 }
 
@@ -924,10 +924,10 @@ function mkFinancialChart(id, segArr){
   const allSlots=DS.bev_fleet.map(d=>d.slot);
   const otePrices=allSlots.map(s=>getOtePrice(s));
   const cfg=chartDefaults();
-  cfg.scales.y.title={display:true,text:t('savings_czk_label'),color:cv('--dim'),font:{family:'Share Tech Mono',size:12}};
+  cfg.scales.y.title={display:true,text:t('savings_czk_label'),color:cv('--dim'),font:{family:'JetBrains Mono',size:12}};
   cfg.scales.y1={type:'linear',position:'right',grid:{display:false},
-    ticks:{color:cv('--accent'),font:{family:'Share Tech Mono',size:11},callback:v=>fmt(v)},
-    title:{display:true,text:t('ote_now_unit'),color:cv('--accent'),font:{family:'Share Tech Mono',size:12}}};
+    ticks:{color:cv('--accent'),font:{family:'JetBrains Mono',size:11},callback:v=>fmt(v)},
+    title:{display:true,text:t('ote_now_unit'),color:cv('--accent'),font:{family:'JetBrains Mono',size:12}}};
   const datasets=[
     {type:'line',label:t('ote_now_unit'),data:otePrices,
       borderColor:'rgba(0,212,255,.7)',borderWidth:1.5,pointRadius:0,fill:false,tension:.4,yAxisID:'y1'},
