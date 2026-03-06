@@ -122,6 +122,22 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;background:var(--acce
   border:1px solid var(--border2);background:transparent;color:var(--dim);cursor:pointer;transition:.15s}
 .preset-btn:hover,.preset-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(120,190,32,.08)}
 
+/* ═══════ SCALE CONTROL ═══════ */
+.scale-control{background:var(--panel);border:1px solid var(--border2);box-shadow:var(--shadow);padding:18px 26px;margin-bottom:20px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.scale-header{display:flex;flex-direction:column;gap:4px;min-width:140px}
+.scale-title{font-family:var(--mono);font-size:13px;letter-spacing:2px;color:var(--dim)}
+.scale-value{font-family:var(--mono);font-size:32px;color:var(--accent);line-height:1}
+.scale-value span{font-size:16px;color:var(--dim)}
+.scale-sub{font-family:var(--mono);font-size:12px;color:var(--dim2);margin-top:2px}
+.scale-presets{display:flex;gap:6px;flex-wrap:wrap;flex:1;align-items:center}
+.scale-btn{font-family:var(--mono);font-size:13px;letter-spacing:1px;padding:8px 16px;
+  border:1px solid var(--border2);background:transparent;color:var(--dim);cursor:pointer;transition:.15s;
+  display:flex;flex-direction:column;align-items:center;gap:2px}
+.scale-btn .scale-btn-cars{font-size:10px;color:var(--dim2)}
+.scale-btn:hover,.scale-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(120,190,32,.08)}
+.scale-btn.active .scale-btn-cars{color:var(--accent);opacity:.7}
+
 /* ═══════ KPI ═══════ */
 .kpi-section{margin-bottom:16px}
 .kpi-section-title{font-family:var(--mono);font-size:13px;letter-spacing:2px;color:var(--dim);margin-bottom:8px;text-transform:uppercase;
@@ -352,6 +368,25 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;background:var(--acce
   </div>
 </div>
 
+<!-- SCALE -->
+<div class="scale-control">
+  <div class="scale-header">
+    <div class="scale-title" data-i18n="scale_title">ŠKÁLOVÁNÍ FLOTILY</div>
+    <div class="scale-value" id="scale-display">1<span>×</span></div>
+    <div class="scale-sub" id="scale-sub">~1 450 vozidel</div>
+  </div>
+  <div class="scale-presets">
+    <span class="preset-label" data-i18n="scale_lbl">VELIKOST:</span>
+    <button class="scale-btn active" onclick="setScale(1)">1×<span class="scale-btn-cars">~1 450</span></button>
+    <button class="scale-btn" onclick="setScale(5)">5×<span class="scale-btn-cars">~7 000</span></button>
+    <button class="scale-btn" onclick="setScale(10)">10×<span class="scale-btn-cars">~14 500</span></button>
+    <button class="scale-btn" onclick="setScale(50)">50×<span class="scale-btn-cars">~72 000</span></button>
+    <button class="scale-btn" onclick="setScale(100)">100×<span class="scale-btn-cars">~145 000</span></button>
+    <button class="scale-btn" onclick="setScale(500)">500×<span class="scale-btn-cars">~725 000</span></button>
+    <button class="scale-btn" onclick="setScale(1000)">1 000×<span class="scale-btn-cars">~1,45M</span></button>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════
      VIEW CONTAINERS
 ═══════════════════════════════════ -->
@@ -425,7 +460,7 @@ const COLORS={
 };
 
 const POWER=11;
-let reduction=0, oteSlots=[], oteNow=null, charts={};
+let reduction=0, scale=1, oteSlots=[], oteNow=null, charts={};
 
 let manualMode = false;
 let manualPrice = 2000;
@@ -504,6 +539,7 @@ const T={cs:{
   table_toggle:'▶ DETAIL TABULKA',table_open:'▼ DETAIL TABULKA',
   th_slot:'SLOT',th_cars:'AUTA',th_baseline:'BASELINE kW',
   th_reduced:'PO REDUKCI kW',th_saved_kwh:'ÚSPORA kWh',th_saved_czk:'ÚSPORA Kč',
+  scale_title:'ŠKÁLOVÁNÍ FLOTILY',scale_lbl:'VELIKOST:',scale_cars:'vozidel',
   auth_hint:'zadejte přístupový kód',
 },en:{
   hdr_tag:'// PHEV + BEV FLEET · CZ · SMART CHARGING',
@@ -552,6 +588,7 @@ const T={cs:{
   table_toggle:'▶ DETAIL TABLE',table_open:'▼ DETAIL TABLE',
   th_slot:'SLOT',th_cars:'CARS',th_baseline:'BASELINE kW',
   th_reduced:'AFTER REDUCTION kW',th_saved_kwh:'SAVED kWh',th_saved_czk:'SAVED CZK',
+  scale_title:'FLEET SCALING',scale_lbl:'SIZE:',scale_cars:'vehicles',
   auth_hint:'enter access code',
 }};
 
@@ -696,9 +733,10 @@ function mergeBySlot(a,b){
 // ══════════════════════════════════════════
 function calcSeg(data,red){
   return data.map(d=>{
-    const baseline=d.cars*POWER, reduced=d.cars*(POWER-red);
-    const savedKwh=d.cars*red*0.25, otePrice=getOtePrice(d.slot);
-    return{slot:d.slot,cars:d.cars,baseline,reduced,savedKwh,savedCzk:savedKwh*(otePrice/1000),otePrice};
+    const cars=d.cars*scale;
+    const baseline=cars*POWER, reduced=cars*(POWER-red);
+    const savedKwh=cars*red*0.25, otePrice=getOtePrice(d.slot);
+    return{slot:d.slot,cars,baseline,reduced,savedKwh,savedCzk:savedKwh*(otePrice/1000),otePrice};
   });
 }
 
@@ -772,10 +810,10 @@ function render2PanelView(view){
     <!-- segment chips -->
     <div class="seg-chips">
       <div class="chip" style="border-color:${colA.line};color:${colA.line}">
-        ${t(mA.nameKey)} <span style="color:var(--dim);font-size:11px;margin-left:6px">${t(mA.dateKey)} · max ${Math.max(...DS[segA].map(d=>d.cars))} ${currentLang==='cs'?'aut':'cars'}</span>
+        ${t(mA.nameKey)} <span style="color:var(--dim);font-size:11px;margin-left:6px">${t(mA.dateKey)} · max ${fmt(Math.max(...cA.map(d=>d.cars)))} ${currentLang==='cs'?'aut':'cars'}</span>
       </div>
       <div class="chip" style="border-color:${colB.line};color:${colB.line}">
-        ${t(mB.nameKey)} <span style="color:var(--dim);font-size:11px;margin-left:6px">${t(mB.dateKey)} · max ${Math.max(...DS[segB].map(d=>d.cars))} ${currentLang==='cs'?'aut':'cars'}</span>
+        ${t(mB.nameKey)} <span style="color:var(--dim);font-size:11px;margin-left:6px">${t(mB.dateKey)} · max ${fmt(Math.max(...cB.map(d=>d.cars)))} ${currentLang==='cs'?'aut':'cars'}</span>
       </div>
     </div>
     <!-- KPI A -->
@@ -853,7 +891,7 @@ function renderAllView(){
     const f=computed[k].find(d=>d.slot===sl); return s+(f?f.reduced:0);},0)));
   const peakDropSum=gridPeakBase-gridPeakRed;
   const maxCars=Math.max(...allSlots.map(sl=>segs.reduce((s,k)=>{
-    const f=DS[k].find(d=>d.slot===sl); return s+(f?f.cars:0);},0)));
+    const f=computed[k].find(d=>d.slot===sl); return s+(f?f.cars:0);},0)));
 
   document.getElementById('all-energy').innerHTML=`${fmt1(totalEnSaved)}<span class="kpi-unit">kWh</span>`;
   document.getElementById('all-money').innerHTML=`${fmt(totalCzk)}<span class="kpi-unit">${t('currency')}</span>`;
@@ -1067,6 +1105,24 @@ function onSlider(val){
   simulate();
 }
 function setPreset(v){reduction=v;document.getElementById('power-slider').value=v;onSlider(v);}
+
+// ══════════════════════════════════════════
+// SCALE
+// ══════════════════════════════════════════
+const BASE_PEAK_CARS=1450; // approximate peak across all segments at 1×
+function setScale(v){
+  scale=v;
+  const loc=currentLang==='cs'?'cs-CZ':'en-GB';
+  document.getElementById('scale-display').innerHTML=`${v.toLocaleString(loc)}<span>×</span>`;
+  const total=Math.round(BASE_PEAK_CARS*v);
+  document.getElementById('scale-sub').textContent=`~${total.toLocaleString(loc)} ${t('scale_cars')}`;
+  document.querySelectorAll('.scale-btn').forEach(b=>{
+    b.classList.remove('active');
+    const m=b.getAttribute('onclick').match(/setScale\(([^)]+)\)/);
+    if(m&&parseFloat(m[1])===v) b.classList.add('active');
+  });
+  simulate();
+}
 
 // ══════════════════════════════════════════
 // AUTH
