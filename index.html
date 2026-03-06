@@ -589,15 +589,17 @@ async function apiFetch(url,json=false){
 async function loadOte(){
   setOteBadge('loading',t('ote_loading'));
   try{
-    const[nowRaw,allRaw]=await Promise.all([
-      apiFetch(`${OTE_BASE}/v1/price/get-actual-price-czk`),
-      apiFetch(`${OTE_BASE}/api/v1/price/get-prices-json-qh`,true),
-    ]);
-    oteNow=parseFloat(nowRaw);
-    if(Array.isArray(allRaw)) oteSlots=allRaw.map(p=>({
-      slot:String(p.hour??0).padStart(2,'0')+':'+String((p.quarterHour??0)*15).padStart(2,'0'),
+    const allRaw=await apiFetch(`${OTE_BASE}/api/v1/price/get-prices-json-qh`,true);
+    const todayArr=allRaw.hoursToday||allRaw;
+    if(!Array.isArray(todayArr)||!todayArr.length) throw new Error('no data');
+    oteSlots=todayArr.map(p=>({
+      slot:String(p.hour??0).padStart(2,'0')+':'+String(p.minute??0).padStart(2,'0'),
       price:p.priceCZK??p.czkPrice??p.price??0
     }));
+    // derive current price from matching slot
+    const now=new Date(), nowSlot=String(now.getHours()).padStart(2,'0')+':'+String(Math.floor(now.getMinutes()/15)*15).padStart(2,'0');
+    const currentSlot=oteSlots.find(s=>s.slot===nowSlot);
+    oteNow=currentSlot?currentSlot.price:oteSlots[0].price;
     const pr=oteSlots.map(s=>s.price).filter(p=>!isNaN(p));
     const mn=Math.min(...pr),mx=Math.max(...pr),av=pr.reduce((a,b)=>a+b,0)/pr.length;
     document.getElementById('ote-now').innerHTML=`${fmt(oteNow)} <span style="font-size:13px;color:var(--dim)">${t('ote_now_unit')}</span>`;
