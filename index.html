@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PHEV + BEV Smart Charging — Simulátor úspor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ═══════ DARK ═══════ */
+:root{
+  --bg:#07090d; --panel:#0d1117; --border:#1c2535; --border2:#243040;
+  --accent:#00d4ff;
+  --c-phev-fleet:#f59e0b;   --c-phev-fleet-a:rgba(245,158,11,.18);
+  --c-phev-priv:#a78bfa;    --c-phev-priv-a:rgba(167,139,250,.18);
+  --c-bev-fleet:#06c9d8;    --c-bev-fleet-a:rgba(6,201,216,.18);
+  --c-bev-priv:#22d3a0;     --c-bev-priv-a:rgba(34,211,160,.18);
+  --green:#22d3a0; --red:#f43f5e; --yellow:#fbbf24;
+  --text:#cdd6e8; --text-strong:#ffffff; --dim:#7a9ab5; --dim2:#5a7a95;
+  --grid:#1c2535; --shadow:none;
+  --mono:'Share Tech Mono',monospace; --ui:'Barlow Condensed',sans-serif;
+}
+/* ═══════ LIGHT ═══════ */
+body.light{
+  --bg:#eef2f7; --panel:#ffffff; --border:#c8d8e8; --border2:#b0c4d8;
+  --accent:#0099bb;
+  --c-phev-fleet:#d97706;   --c-phev-fleet-a:rgba(217,119,6,.12);
+  --c-phev-priv:#7c3aed;    --c-phev-priv-a:rgba(124,58,237,.10);
+  --c-bev-fleet:#0891b2;    --c-bev-fleet-a:rgba(8,145,178,.12);
+  --c-bev-priv:#0d9467;     --c-bev-priv-a:rgba(13,148,103,.10);
+  --green:#0d9467; --red:#dc2626; --yellow:#d97706;
+  --text:#1e2d3d; --text-strong:#0a1520; --dim:#4a6880; --dim2:#6a88a0;
+  --grid:rgba(180,200,220,.7); --shadow:0 2px 12px rgba(0,0,0,.08);
+}
+body.light::before{
+  background-image:linear-gradient(rgba(0,100,180,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,100,180,.03) 1px,transparent 1px)!important;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);min-height:100vh;font-size:16px;transition:background .2s,color .2s}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,212,255,.02) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,.02) 1px,transparent 1px);
+  background-size:40px 40px}
+.wrap{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:20px 20px 60px}
+
+/* ═══════ HEADER ═══════ */
+header{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start;
+  margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.hdr-tag{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:3px;margin-bottom:5px}
+h1{font-size:clamp(26px,3.5vw,46px);font-weight:900;letter-spacing:-1px;color:var(--text-strong);line-height:1}
+h1 em{color:var(--accent);font-style:normal}
+.hdr-sub{font-family:var(--mono);font-size:13px;color:var(--dim);margin-top:5px}
+.hdr-controls{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.toggle-row{display:flex;gap:8px;align-items:center}
+.theme-toggle,.lang-toggle{display:flex;border:1px solid var(--border2);overflow:hidden}
+.theme-btn,.lang-btn{font-family:var(--mono);font-size:12px;padding:6px 13px;
+  background:transparent;border:none;color:var(--dim);cursor:pointer;transition:.15s;letter-spacing:1px}
+.theme-btn.active,.lang-btn.active{background:var(--accent);color:#000;font-weight:700}
+.ote-badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;
+  border:1px solid;padding:4px 11px;margin-top:4px}
+.ote-badge.ok{border-color:var(--green);color:var(--green)}
+.ote-badge.loading{border-color:var(--yellow);color:var(--yellow)}
+.ote-badge.err{border-color:var(--red);color:var(--red)}
+.ote-dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ═══════ SEGMENT SWITCHER ═══════ */
+.seg-switcher{display:flex;gap:0;margin-bottom:20px;flex-wrap:wrap;border:1px solid var(--border2);overflow:hidden}
+.seg-btn{
+  font-family:var(--mono);font-size:13px;letter-spacing:1px;padding:12px 20px;
+  border:none;border-right:1px solid var(--border2);background:transparent;
+  color:var(--dim);cursor:pointer;transition:.15s;flex:1;min-width:120px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.seg-btn:last-child{border-right:none}
+.seg-btn .seg-icon{font-size:18px;line-height:1}
+.seg-btn .seg-name{font-size:12px;letter-spacing:2px}
+.seg-btn .seg-count{font-family:var(--mono);font-size:11px;color:var(--dim2)}
+.seg-btn:hover{background:rgba(0,212,255,.05);color:var(--text)}
+.seg-btn.active{background:var(--accent);color:#000}
+.seg-btn.active .seg-count{color:rgba(0,0,0,.6)}
+.seg-btn.active-phev{background:rgba(245,158,11,.15);border-bottom:3px solid var(--c-phev-fleet);color:var(--c-phev-fleet)}
+.seg-btn.active-bev{background:rgba(6,201,216,.12);border-bottom:3px solid var(--c-bev-fleet);color:var(--c-bev-fleet)}
+.seg-btn.active-fleet{background:rgba(0,212,255,.10);border-bottom:3px solid var(--accent);color:var(--accent)}
+.seg-btn.active-priv{background:rgba(167,139,250,.12);border-bottom:3px solid var(--c-phev-priv);color:var(--c-phev-priv)}
+.seg-btn.active-all{background:rgba(34,211,160,.12);border-bottom:3px solid var(--green);color:var(--green)}
+
+/* ═══════ OTE BAR ═══════ */
+.ote-bar{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);
+  padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:14px}
+.ote-price-now{font-size:26px;color:var(--accent)}
+.ote-divider{width:1px;height:36px;background:var(--border2);flex-shrink:0}
+.ote-stat{display:flex;flex-direction:column;gap:3px}
+.ote-stat-lbl{font-size:12px;color:var(--dim);letter-spacing:1px}
+.ote-stat-val{color:var(--text-strong);font-size:15px}
+.ote-note{margin-left:auto;font-size:12px;color:var(--dim2);max-width:300px;text-align:right;line-height:1.5}
+
+/* ═══════ SLIDER ═══════ */
+.sim-control{background:var(--panel);border:1px solid var(--border2);box-shadow:var(--shadow);padding:22px 26px;margin-bottom:20px}
+.sim-control-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.sim-title{font-family:var(--mono);font-size:13px;letter-spacing:2px;color:var(--dim)}
+.reduction-display{font-family:var(--mono);font-size:38px;color:var(--accent);line-height:1}
+.reduction-display span{font-size:20px;color:var(--dim)}
+.reduction-pct{font-family:var(--mono);font-size:14px;color:var(--dim);margin-top:4px}
+.slider-wrap{position:relative;padding-bottom:6px}
+input[type=range]{width:100%;height:8px;appearance:none;background:var(--border2);border-radius:0;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:22px;height:22px;background:var(--accent);border-radius:0;cursor:pointer;box-shadow:0 0 14px rgba(0,212,255,.5)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;background:var(--accent);border:none;border-radius:0;cursor:pointer}
+.slider-fill{position:absolute;top:0;left:0;height:8px;pointer-events:none;
+  background:linear-gradient(90deg,var(--green),var(--accent),var(--yellow),var(--red))}
+.slider-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--dim);margin-top:8px}
+.preset-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center}
+.preset-label{font-family:var(--mono);font-size:13px;color:var(--dim2)}
+.preset-btn{font-family:var(--mono);font-size:13px;letter-spacing:1px;padding:6px 14px;
+  border:1px solid var(--border2);background:transparent;color:var(--dim);cursor:pointer;transition:.15s}
+.preset-btn:hover,.preset-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+
+/* ═══════ KPI ═══════ */
+.kpi-section{margin-bottom:16px}
+.kpi-section-title{font-family:var(--mono);font-size:13px;letter-spacing:2px;color:var(--dim);margin-bottom:8px;text-transform:uppercase;
+  display:flex;align-items:center;gap:10px}
+.kpi-section-title .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.kpi{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);
+  padding:16px 18px;position:relative;overflow:hidden;transition:background .2s}
+.kpi::after{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
+.kpi-lbl{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}
+.kpi-val{font-family:var(--mono);font-size:clamp(20px,2.2vw,28px);color:var(--text-strong);line-height:1}
+.kpi-unit{font-size:13px;color:var(--dim);margin-left:3px}
+.kpi-delta{font-family:var(--mono);font-size:12px;color:var(--green);margin-top:5px}
+.kpi-delta.neg{color:var(--red)}
+
+/* ═══════ PANELS ═══════ */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.charts-grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:1100px){.charts-grid-4{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.charts-grid,.charts-grid-4{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);padding:20px;transition:background .2s}
+.panel-full{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);padding:20px;margin-bottom:12px}
+.panel-title{font-family:var(--mono);font-size:13px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.panel-title .badge{font-size:12px;padding:3px 9px;border:1px solid;white-space:nowrap}
+.chart-wrap{position:relative;height:220px}
+.chart-wrap-tall{position:relative;height:220px}
+
+/* ═══════ SEGMENT LABEL CHIPS ═══════ */
+.seg-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{font-family:var(--mono);font-size:12px;letter-spacing:1px;padding:6px 14px;border-left:3px solid;background:var(--panel)}
+
+/* ═══════ TABLE ═══════ */
+.detail-toggle{font-family:var(--mono);font-size:13px;color:var(--accent);cursor:pointer;
+  letter-spacing:1px;border:none;background:transparent;margin-bottom:10px;display:flex;align-items:center;gap:6px;padding:0}
+.detail-table-wrap{max-height:300px;overflow-y:auto;display:none}
+.data-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+.data-table th{color:var(--dim);font-size:12px;letter-spacing:1px;font-weight:400;padding:4px 10px 10px;border-bottom:1px solid var(--border);text-align:left}
+.data-table td{padding:7px 10px;border-bottom:1px solid var(--border)}
+.data-table tr.peak-row td{background:rgba(244,63,94,.09)}
+.data-table tr.saving-row td{background:rgba(34,211,160,.06)}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ═══════ MANUAL PRICE PANEL ═══════ */
+.manual-price-panel{
+  background:var(--panel);border:1px solid var(--red);box-shadow:var(--shadow);
+  padding:16px 20px;margin-bottom:16px;
+  display:none;align-items:center;gap:16px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:13px;
+  animation:fadeIn .3s ease;
+}
+.manual-price-panel.visible{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.manual-price-label{color:var(--red);letter-spacing:2px;font-size:12px;white-space:nowrap}
+.manual-price-wrap{display:flex;align-items:center;gap:10px;flex:1;min-width:200px}
+.manual-price-slider{flex:1;height:6px;appearance:none;background:var(--border2);border-radius:0;outline:none;cursor:pointer}
+.manual-price-slider::-webkit-slider-thumb{appearance:none;width:20px;height:20px;background:var(--red);border-radius:0;cursor:pointer;box-shadow:0 0 10px rgba(244,63,94,.4)}
+.manual-price-slider::-moz-range-thumb{width:20px;height:20px;background:var(--red);border:none;border-radius:0}
+.manual-price-val{font-size:20px;color:var(--red);min-width:110px;text-align:right}
+.manual-price-presets{display:flex;gap:6px;flex-wrap:wrap}
+.manual-price-btn{font-family:var(--mono);font-size:12px;padding:4px 10px;border:1px solid var(--border2);background:transparent;color:var(--dim);cursor:pointer;transition:.15s}
+.manual-price-btn:hover,.manual-price-btn.active{border-color:var(--red);color:var(--red);background:rgba(244,63,94,.08)}
+.manual-price-note{font-size:11px;color:var(--dim2);margin-left:auto}
+
+
+/* ═══════ VIEW VISIBILITY ═══════ */
+.view{display:none}.view.active{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<header>
+  <div>
+    <div class="hdr-tag" data-i18n="hdr_tag">// PHEV + BEV FLEET · ČR · SMART CHARGING</div>
+    <h1 data-i18n="hdr_h1">SIMULÁTOR <em>ÚSPOR</em></h1>
+    <div class="hdr-sub" data-i18n="hdr_sub">řízení nabíjecího výkonu · snížení zatížení sítě · OTE spotové ceny</div>
+  </div>
+  <div class="hdr-controls">
+    <div class="toggle-row">
+      <div class="theme-toggle">
+        <button class="theme-btn active" id="btn-dark" onclick="setTheme('dark')">◑ DARK</button>
+        <button class="theme-btn" id="btn-light" onclick="setTheme('light')">☀ LIGHT</button>
+      </div>
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btn-cz" onclick="setLang('cs')">🇨🇿 CZ</button>
+        <button class="lang-btn" id="btn-en" onclick="setLang('en')">🇬🇧 EN</button>
+      </div>
+    </div>
+    <div style="text-align:right;font-family:var(--mono);font-size:13px;color:var(--dim)">
+      <b id="clock" style="color:var(--text-strong);font-size:20px;display:block">--:--:--</b>
+      <div id="today-date" style="margin-top:4px;font-size:15px"></div>
+      <div id="ote-badge" class="ote-badge loading">
+        <div class="ote-dot"></div>
+        <span id="ote-badge-txt">načítám OTE…</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+
+<!-- MANUAL PRICE PANEL (shown when OTE fails) -->
+<div class="manual-price-panel" id="manual-price-panel">
+  <div class="manual-price-label" data-i18n="manual_lbl">⚠ RUČNÍ CENA OTE</div>
+  <div class="manual-price-wrap">
+    <input type="range" class="manual-price-slider" id="manual-price-slider"
+      min="0" max="10000" step="100" value="2000"
+      oninput="onManualPrice(this.value)"/>
+    <div class="manual-price-val"><span id="manual-price-display">2 000</span> <span style="font-size:13px;color:var(--dim)" data-i18n="ote_now_unit">Kč/MWh</span></div>
+  </div>
+  <div class="manual-price-presets">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--dim2)" data-i18n="manual_presets_lbl">SCÉNÁŘE:</span>
+    <button class="manual-price-btn" onclick="setManualPrice(500)">500</button>
+    <button class="manual-price-btn" onclick="setManualPrice(1000)">1 000</button>
+    <button class="manual-price-btn active" onclick="setManualPrice(2000)">2 000</button>
+    <button class="manual-price-btn" onclick="setManualPrice(3000)">3 000</button>
+    <button class="manual-price-btn" onclick="setManualPrice(5000)">5 000</button>
+    <button class="manual-price-btn" onclick="setManualPrice(8000)">8 000</button>
+    <button class="manual-price-btn" onclick="setManualPrice(10000)">10 000</button>
+  </div>
+  <div class="manual-price-note" data-i18n="manual_note">OTE API nedostupné · cena platí pro všechny sloty</div>
+</div>
+
+<!-- SEGMENT SWITCHER -->
+<div class="seg-switcher">
+  <button class="seg-btn active-phev" id="sbtn-phev" onclick="setView('phev')">
+    <span class="seg-icon">🔋</span>
+    <span class="seg-name" data-i18n="view_phev">PHEV</span>
+    <span class="seg-count" data-i18n="view_phev_sub">Octavia · Superb · Kodiaq</span>
+  </button>
+  <button class="seg-btn" id="sbtn-bev" onclick="setView('bev')">
+    <span class="seg-icon">⚡</span>
+    <span class="seg-name" data-i18n="view_bev">BEV</span>
+    <span class="seg-count" data-i18n="view_bev_sub">Enyaq</span>
+  </button>
+  <button class="seg-btn" id="sbtn-fleet" onclick="setView('fleet')">
+    <span class="seg-icon">🏢</span>
+    <span class="seg-name" data-i18n="view_fleet">FLEET</span>
+    <span class="seg-count" data-i18n="view_fleet_sub">PHEV + BEV firemní</span>
+  </button>
+  <button class="seg-btn" id="sbtn-private" onclick="setView('private')">
+    <span class="seg-icon">🏠</span>
+    <span class="seg-name" data-i18n="view_private">SOUKROMÉ</span>
+    <span class="seg-count" data-i18n="view_private_sub">PHEV + BEV soukromé</span>
+  </button>
+  <button class="seg-btn" id="sbtn-all" onclick="setView('all')">
+    <span class="seg-icon">∑</span>
+    <span class="seg-name" data-i18n="view_all">VŠECHNY VOZY</span>
+    <span class="seg-count" data-i18n="view_all_sub">kompletní přehled</span>
+  </button>
+</div>
+
+<!-- OTE BAR -->
+<div class="ote-bar">
+  <div>
+    <div style="font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:4px" data-i18n="ote_now_lbl">OTE SPOT CENA NYNÍ</div>
+    <div class="ote-price-now" id="ote-now">— <span style="font-size:13px;color:var(--dim)">Kč/MWh</span></div>
+  </div>
+  <div class="ote-divider"></div>
+  <div class="ote-stat"><div class="ote-stat-lbl" data-i18n="ote_min_lbl">MINIMUM DNES</div><div class="ote-stat-val" id="ote-min">—</div></div>
+  <div class="ote-stat"><div class="ote-stat-lbl" data-i18n="ote_max_lbl">MAXIMUM DNES</div><div class="ote-stat-val" id="ote-max">—</div></div>
+  <div class="ote-stat"><div class="ote-stat-lbl" data-i18n="ote_avg_lbl">PRŮMĚR DNES</div><div class="ote-stat-val" id="ote-avg">—</div></div>
+  <div class="ote-stat"><div class="ote-stat-lbl" data-i18n="ote_kwh_lbl">Kč/kWh NYNÍ</div><div class="ote-stat-val" id="ote-kwh">—</div></div>
+  <div class="ote-note" id="ote-note" data-i18n="ote_note">Ceny bez DPH a distribuce · spotovaelektrina.cz</div>
+</div>
+
+<!-- SLIDER -->
+<div class="sim-control">
+  <div class="sim-control-header">
+    <div class="sim-title" data-i18n="slider_title">REDUKCE NABÍJECÍHO VÝKONU</div>
+    <div>
+      <div class="reduction-display" id="reduction-display">0 <span>kW</span></div>
+      <div class="reduction-pct" id="reduction-pct">0 % z 11 kW | výsledný výkon: 11 kW/vozidlo</div>
+    </div>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-fill" id="slider-fill" style="width:0%"></div>
+    <input type="range" id="power-slider" min="0" max="11" step="0.5" value="0" oninput="onSlider(this.value)"/>
+  </div>
+  <div class="slider-labels">
+    <span data-i18n="slider_0">0 kW (bez redukce)</span>
+    <span>2 kW</span><span>4 kW</span><span>6 kW</span><span>8 kW</span><span>10 kW</span>
+    <span data-i18n="slider_11">11 kW (full stop)</span>
+  </div>
+  <div class="preset-row">
+    <span class="preset-label" data-i18n="presets_lbl">SCÉNÁŘE:</span>
+    <button class="preset-btn active" onclick="setPreset(0)" data-i18n="preset_0">Baseline (0 kW)</button>
+    <button class="preset-btn" onclick="setPreset(1)">−1 kW</button>
+    <button class="preset-btn" onclick="setPreset(2)">−2 kW</button>
+    <button class="preset-btn" onclick="setPreset(3)">−3 kW</button>
+    <button class="preset-btn" onclick="setPreset(5)">−5 kW</button>
+    <button class="preset-btn" onclick="setPreset(7)">−7 kW</button>
+    <button class="preset-btn" onclick="setPreset(11)" data-i18n="preset_11">Full stop (−11 kW)</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     VIEW CONTAINERS
+═══════════════════════════════════ -->
+
+<!-- VIEW: PHEV + BEV + FLEET + PRIVATE (2-panel views) -->
+<div id="view-phev" class="view active"></div>
+<div id="view-bev" class="view"></div>
+<div id="view-fleet" class="view"></div>
+<div id="view-private" class="view"></div>
+
+<!-- VIEW: ALL (4-panel combined) -->
+<div id="view-all" class="view">
+  <!-- combined KPI -->
+  <div class="kpi-section">
+    <div class="kpi-section-title"><span class="dot" style="background:var(--green)"></span><span data-i18n="kpi_all_title">∑ Všechny vozy celkem</span></div>
+    <div class="kpi-grid" id="all-kpi-grid">
+      <div class="kpi" style="--c:var(--green)"><div style="position:absolute;top:0;left:0;width:3px;height:100%;background:var(--green)"></div>
+        <div class="kpi-lbl" data-i18n="kpi_total_energy">Celková úspora energie</div>
+        <div class="kpi-val" id="all-energy">—<span class="kpi-unit">kWh</span></div></div>
+      <div class="kpi"><div style="position:absolute;top:0;left:0;width:3px;height:100%;background:var(--green)"></div>
+        <div class="kpi-lbl" data-i18n="kpi_total_money">Celková fin. úspora</div>
+        <div class="kpi-val" id="all-money">—<span class="kpi-unit">Kč</span></div></div>
+      <div class="kpi"><div style="position:absolute;top:0;left:0;width:3px;height:100%;background:var(--green)"></div>
+        <div class="kpi-lbl" data-i18n="kpi_peak_drop">Snížení špičky sítě</div>
+        <div class="kpi-val" id="all-peak">—<span class="kpi-unit">kW</span></div></div>
+      <div class="kpi"><div style="position:absolute;top:0;left:0;width:3px;height:100%;background:var(--green)"></div>
+        <div class="kpi-lbl" data-i18n="kpi_total_cars">Max aut souběžně</div>
+        <div class="kpi-val" id="all-cars">—</div></div>
+    </div>
+  </div>
+
+  <!-- 4-panel KPI strips -->
+  <div class="charts-grid-4" id="all-seg-kpis"></div>
+
+  <!-- combined load chart -->
+  <div class="panel-full">
+    <div class="panel-title"><span data-i18n="chart_all_load">ZATÍŽENÍ SÍTĚ · VŠECHNY SEGMENTY</span></div>
+    <div class="chart-wrap-tall"><canvas id="chartAllLoad"></canvas></div>
+  </div>
+
+  <!-- combined savings -->
+  <div class="charts-grid">
+    <div class="panel">
+      <div class="panel-title"><span data-i18n="chart_all_saving">ÚSPORA ENERGIE · VŠECHNY SEGMENTY</span> <span style="font-size:12px;color:var(--dim2)">[kWh/slot]</span></div>
+      <div class="chart-wrap"><canvas id="chartAllSaving"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span data-i18n="chart_all_financial">FINANČNÍ ÚSPORA vs. OTE CENA</span></div>
+      <div class="chart-wrap"><canvas id="chartAllFinancial"></canvas></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+<script>
+// ══════════════════════════════════════════
+// RAW DATA — 4 segments
+// ══════════════════════════════════════════
+const DS={
+  phev_fleet:[{"slot":"00:00","cars":1},{"slot":"00:15","cars":1},{"slot":"00:30","cars":3},{"slot":"00:45","cars":3},{"slot":"01:00","cars":3},{"slot":"01:15","cars":3},{"slot":"01:30","cars":3},{"slot":"01:45","cars":3},{"slot":"02:00","cars":4},{"slot":"02:15","cars":5},{"slot":"02:30","cars":6},{"slot":"02:45","cars":7},{"slot":"03:00","cars":7},{"slot":"03:15","cars":8},{"slot":"03:30","cars":8},{"slot":"03:45","cars":8},{"slot":"04:00","cars":9},{"slot":"04:15","cars":9},{"slot":"04:30","cars":9},{"slot":"04:45","cars":10},{"slot":"05:00","cars":14},{"slot":"05:15","cars":22},{"slot":"05:30","cars":38},{"slot":"05:45","cars":61},{"slot":"06:00","cars":61},{"slot":"06:15","cars":61},{"slot":"06:30","cars":60},{"slot":"06:45","cars":62},{"slot":"07:00","cars":116},{"slot":"07:15","cars":170},{"slot":"07:30","cars":261},{"slot":"07:45","cars":398},{"slot":"08:00","cars":397},{"slot":"08:15","cars":397},{"slot":"08:30","cars":397},{"slot":"08:45","cars":398},{"slot":"09:00","cars":398},{"slot":"09:15","cars":396},{"slot":"09:30","cars":395},{"slot":"09:45","cars":393},{"slot":"10:00","cars":404},{"slot":"10:15","cars":419},{"slot":"10:30","cars":441},{"slot":"10:45","cars":468},{"slot":"11:00","cars":463},{"slot":"11:15","cars":463},{"slot":"11:30","cars":463},{"slot":"11:45","cars":463},{"slot":"12:00","cars":463},{"slot":"12:15","cars":462},{"slot":"12:30","cars":458},{"slot":"12:45","cars":454},{"slot":"13:00","cars":455},{"slot":"13:15","cars":454},{"slot":"13:30","cars":459},{"slot":"13:45","cars":470},{"slot":"14:00","cars":461},{"slot":"14:15","cars":456},{"slot":"14:30","cars":453},{"slot":"14:45","cars":442},{"slot":"15:00","cars":426},{"slot":"15:15","cars":406},{"slot":"15:30","cars":381},{"slot":"15:45","cars":356},{"slot":"16:00","cars":336},{"slot":"16:15","cars":293},{"slot":"16:30","cars":261},{"slot":"16:45","cars":232},{"slot":"17:00","cars":211},{"slot":"17:15","cars":169},{"slot":"17:30","cars":142},{"slot":"17:45","cars":121},{"slot":"18:00","cars":96},{"slot":"18:15","cars":83},{"slot":"18:30","cars":69},{"slot":"18:45","cars":54},{"slot":"19:00","cars":46},{"slot":"19:15","cars":42},{"slot":"19:30","cars":40},{"slot":"19:45","cars":34},{"slot":"20:00","cars":33},{"slot":"20:15","cars":32},{"slot":"20:30","cars":27},{"slot":"20:45","cars":20},{"slot":"21:00","cars":18},{"slot":"21:15","cars":15},{"slot":"21:30","cars":12},{"slot":"21:45","cars":9},{"slot":"22:00","cars":9},{"slot":"22:15","cars":7},{"slot":"22:30","cars":5},{"slot":"22:45","cars":2},{"slot":"23:00","cars":1},{"slot":"23:15","cars":1},{"slot":"23:30","cars":1}],
+  phev_priv:[{"slot":"00:00","cars":1},{"slot":"00:15","cars":3},{"slot":"00:30","cars":7},{"slot":"00:45","cars":9},{"slot":"01:00","cars":11},{"slot":"01:15","cars":12},{"slot":"01:30","cars":12},{"slot":"01:45","cars":13},{"slot":"02:00","cars":13},{"slot":"02:15","cars":13},{"slot":"02:30","cars":14},{"slot":"02:45","cars":14},{"slot":"03:00","cars":15},{"slot":"03:15","cars":16},{"slot":"03:30","cars":15},{"slot":"03:45","cars":15},{"slot":"04:00","cars":15},{"slot":"04:15","cars":16},{"slot":"04:30","cars":16},{"slot":"04:45","cars":16},{"slot":"05:00","cars":16},{"slot":"05:15","cars":16},{"slot":"05:30","cars":16},{"slot":"05:45","cars":16},{"slot":"06:00","cars":17},{"slot":"06:15","cars":18},{"slot":"06:30","cars":19},{"slot":"06:45","cars":19},{"slot":"07:00","cars":19},{"slot":"07:15","cars":23},{"slot":"07:30","cars":23},{"slot":"07:45","cars":25},{"slot":"08:00","cars":27},{"slot":"08:15","cars":28},{"slot":"08:30","cars":29},{"slot":"08:45","cars":30},{"slot":"09:00","cars":31},{"slot":"09:15","cars":35},{"slot":"09:30","cars":44},{"slot":"09:45","cars":46},{"slot":"10:00","cars":54},{"slot":"10:15","cars":58},{"slot":"10:30","cars":62},{"slot":"10:45","cars":75},{"slot":"11:00","cars":73},{"slot":"11:15","cars":73},{"slot":"11:30","cars":73},{"slot":"11:45","cars":73},{"slot":"12:00","cars":76},{"slot":"12:15","cars":76},{"slot":"12:30","cars":80},{"slot":"12:45","cars":88},{"slot":"13:00","cars":85},{"slot":"13:15","cars":85},{"slot":"13:30","cars":83},{"slot":"13:45","cars":79},{"slot":"14:00","cars":82},{"slot":"14:15","cars":78},{"slot":"14:30","cars":70},{"slot":"14:45","cars":71},{"slot":"15:00","cars":68},{"slot":"15:15","cars":68},{"slot":"15:30","cars":66},{"slot":"15:45","cars":67},{"slot":"16:00","cars":63},{"slot":"16:15","cars":58},{"slot":"16:30","cars":59},{"slot":"16:45","cars":54},{"slot":"17:00","cars":50},{"slot":"17:15","cars":50},{"slot":"17:30","cars":48},{"slot":"17:45","cars":47},{"slot":"18:00","cars":36},{"slot":"18:15","cars":26},{"slot":"18:30","cars":24},{"slot":"18:45","cars":20},{"slot":"19:00","cars":18},{"slot":"19:15","cars":18},{"slot":"19:30","cars":17},{"slot":"19:45","cars":16},{"slot":"20:00","cars":12},{"slot":"20:15","cars":12},{"slot":"20:30","cars":11},{"slot":"20:45","cars":13},{"slot":"21:00","cars":12},{"slot":"21:15","cars":12},{"slot":"21:30","cars":12},{"slot":"21:45","cars":11},{"slot":"22:00","cars":9},{"slot":"22:15","cars":7},{"slot":"22:30","cars":7},{"slot":"22:45","cars":4},{"slot":"23:00","cars":2},{"slot":"23:15","cars":2},{"slot":"23:30","cars":1},{"slot":"23:45","cars":1}],
+  bev_fleet:[{"slot":"00:00","cars":4},{"slot":"00:15","cars":8},{"slot":"00:30","cars":10},{"slot":"00:45","cars":12},{"slot":"01:00","cars":12},{"slot":"01:15","cars":14},{"slot":"01:30","cars":15},{"slot":"01:45","cars":15},{"slot":"02:00","cars":15},{"slot":"02:15","cars":15},{"slot":"02:30","cars":16},{"slot":"02:45","cars":17},{"slot":"03:00","cars":18},{"slot":"03:15","cars":19},{"slot":"03:30","cars":21},{"slot":"03:45","cars":23},{"slot":"04:00","cars":23},{"slot":"04:15","cars":23},{"slot":"04:30","cars":23},{"slot":"04:45","cars":25},{"slot":"05:00","cars":30},{"slot":"05:15","cars":41},{"slot":"05:30","cars":68},{"slot":"05:45","cars":100},{"slot":"06:00","cars":100},{"slot":"06:15","cars":100},{"slot":"06:30","cars":100},{"slot":"06:45","cars":107},{"slot":"07:00","cars":179},{"slot":"07:15","cars":277},{"slot":"07:30","cars":400},{"slot":"07:45","cars":579},{"slot":"08:00","cars":578},{"slot":"08:15","cars":578},{"slot":"08:30","cars":578},{"slot":"08:45","cars":578},{"slot":"09:00","cars":578},{"slot":"09:15","cars":577},{"slot":"09:30","cars":577},{"slot":"09:45","cars":574},{"slot":"10:00","cars":604},{"slot":"10:15","cars":642},{"slot":"10:30","cars":676},{"slot":"10:45","cars":712},{"slot":"11:00","cars":704},{"slot":"11:15","cars":703},{"slot":"11:30","cars":702},{"slot":"11:45","cars":700},{"slot":"12:00","cars":700},{"slot":"12:15","cars":697},{"slot":"12:30","cars":696},{"slot":"12:45","cars":684},{"slot":"13:00","cars":691},{"slot":"13:15","cars":685},{"slot":"13:30","cars":686},{"slot":"13:45","cars":700},{"slot":"14:00","cars":689},{"slot":"14:15","cars":684},{"slot":"14:30","cars":675},{"slot":"14:45","cars":652},{"slot":"15:00","cars":618},{"slot":"15:15","cars":571},{"slot":"15:30","cars":535},{"slot":"15:45","cars":483},{"slot":"16:00","cars":441},{"slot":"16:15","cars":395},{"slot":"16:30","cars":352},{"slot":"16:45","cars":321},{"slot":"17:00","cars":286},{"slot":"17:15","cars":249},{"slot":"17:30","cars":215},{"slot":"17:45","cars":194},{"slot":"18:00","cars":181},{"slot":"18:15","cars":164},{"slot":"18:30","cars":137},{"slot":"18:45","cars":131},{"slot":"19:00","cars":118},{"slot":"19:15","cars":110},{"slot":"19:30","cars":106},{"slot":"19:45","cars":92},{"slot":"20:00","cars":81},{"slot":"20:15","cars":75},{"slot":"20:30","cars":72},{"slot":"20:45","cars":60},{"slot":"21:00","cars":56},{"slot":"21:15","cars":47},{"slot":"21:30","cars":44},{"slot":"21:45","cars":39},{"slot":"22:00","cars":35},{"slot":"22:15","cars":27},{"slot":"22:30","cars":22},{"slot":"22:45","cars":18},{"slot":"23:00","cars":13},{"slot":"23:15","cars":10},{"slot":"23:30","cars":4},{"slot":"23:45","cars":2}],
+  bev_priv:[{"slot":"00:00","cars":4},{"slot":"00:15","cars":10},{"slot":"00:30","cars":16},{"slot":"00:45","cars":17},{"slot":"01:00","cars":19},{"slot":"01:15","cars":20},{"slot":"01:30","cars":24},{"slot":"01:45","cars":25},{"slot":"02:00","cars":26},{"slot":"02:15","cars":29},{"slot":"02:30","cars":29},{"slot":"02:45","cars":33},{"slot":"03:00","cars":34},{"slot":"03:15","cars":34},{"slot":"03:30","cars":34},{"slot":"03:45","cars":34},{"slot":"04:00","cars":34},{"slot":"04:15","cars":36},{"slot":"04:30","cars":36},{"slot":"04:45","cars":38},{"slot":"05:00","cars":39},{"slot":"05:15","cars":39},{"slot":"05:30","cars":40},{"slot":"05:45","cars":42},{"slot":"06:00","cars":42},{"slot":"06:15","cars":42},{"slot":"06:30","cars":44},{"slot":"06:45","cars":45},{"slot":"07:00","cars":48},{"slot":"07:15","cars":51},{"slot":"07:30","cars":54},{"slot":"07:45","cars":58},{"slot":"08:00","cars":64},{"slot":"08:15","cars":66},{"slot":"08:30","cars":67},{"slot":"08:45","cars":74},{"slot":"09:00","cars":92},{"slot":"09:15","cars":101},{"slot":"09:30","cars":106},{"slot":"09:45","cars":121},{"slot":"10:00","cars":127},{"slot":"10:15","cars":140},{"slot":"10:30","cars":154},{"slot":"10:45","cars":170},{"slot":"11:00","cars":167},{"slot":"11:15","cars":166},{"slot":"11:30","cars":165},{"slot":"11:45","cars":164},{"slot":"12:00","cars":171},{"slot":"12:15","cars":172},{"slot":"12:30","cars":175},{"slot":"12:45","cars":177},{"slot":"13:00","cars":174},{"slot":"13:15","cars":173},{"slot":"13:30","cars":171},{"slot":"13:45","cars":163},{"slot":"14:00","cars":162},{"slot":"14:15","cars":157},{"slot":"14:30","cars":158},{"slot":"14:45","cars":163},{"slot":"15:00","cars":155},{"slot":"15:15","cars":153},{"slot":"15:30","cars":151},{"slot":"15:45","cars":147},{"slot":"16:00","cars":135},{"slot":"16:15","cars":129},{"slot":"16:30","cars":123},{"slot":"16:45","cars":127},{"slot":"17:00","cars":123},{"slot":"17:15","cars":122},{"slot":"17:30","cars":119},{"slot":"17:45","cars":114},{"slot":"18:00","cars":94},{"slot":"18:15","cars":78},{"slot":"18:30","cars":65},{"slot":"18:45","cars":55},{"slot":"19:00","cars":47},{"slot":"19:15","cars":46},{"slot":"19:30","cars":43},{"slot":"19:45","cars":39},{"slot":"20:00","cars":31},{"slot":"20:15","cars":26},{"slot":"20:30","cars":21},{"slot":"20:45","cars":16},{"slot":"21:00","cars":14},{"slot":"21:15","cars":13},{"slot":"21:30","cars":13},{"slot":"21:45","cars":12},{"slot":"22:00","cars":12},{"slot":"22:15","cars":7},{"slot":"22:30","cars":5},{"slot":"22:45","cars":4},{"slot":"23:00","cars":3},{"slot":"23:15","cars":1},{"slot":"23:30","cars":1},{"slot":"23:45","cars":1}]
+};
+
+const COLORS={
+  phev_fleet:{line:'#f59e0b',fill:'rgba(245,158,11,.18)',dim:'rgba(245,158,11,.4)'},
+  phev_priv: {line:'#a78bfa',fill:'rgba(167,139,250,.18)',dim:'rgba(167,139,250,.4)'},
+  bev_fleet: {line:'#06c9d8',fill:'rgba(6,201,216,.18)',dim:'rgba(6,201,216,.4)'},
+  bev_priv:  {line:'#22d3a0',fill:'rgba(34,211,160,.18)',dim:'rgba(34,211,160,.4)'}
+};
+
+const POWER=11;
+let reduction=0, oteSlots=[], oteNow=null, charts={};
+
+let manualMode = false;
+let manualPrice = 2000;
+
+function onManualPrice(val){
+  manualPrice = parseFloat(val);
+  const loc = currentLang==='cs'?'cs-CZ':'en-GB';
+  document.getElementById('manual-price-display').textContent = Math.round(manualPrice).toLocaleString(loc);
+  // update active preset button
+  document.querySelectorAll('.manual-price-btn').forEach(b=>{
+    b.classList.remove('active');
+    const v=parseFloat(b.getAttribute('onclick').match(/setManualPrice\(([^)]+)\)/)?.[1]);
+    if(v===manualPrice) b.classList.add('active');
+  });
+  simulate();
+}
+
+function setManualPrice(val){
+  manualPrice = val;
+  document.getElementById('manual-price-slider').value = val;
+  onManualPrice(val);
+}
+
+
+let currentLang='cs', currentTheme='dark', currentView='phev';
+let computed={}; // cached calc results keyed by segment
+
+// ══════════════════════════════════════════
+// TRANSLATIONS
+// ══════════════════════════════════════════
+const T={cs:{
+  hdr_tag:'// PHEV + BEV FLEET · ČR · SMART CHARGING',
+  hdr_h1:'SIMULÁTOR <em>ÚSPOR</em>',
+  hdr_sub:'řízení nabíjecího výkonu · snížení zatížení sítě · OTE spotové ceny',
+
+  manual_lbl:'⚠ RUČNÍ CENA OTE',
+  manual_presets_lbl:'RYCHLÉ VOLBY:',
+  manual_note:'OTE API nedostupné · cena platí pro všechny sloty',
+  ote_loading:'načítám OTE…',ote_live_ok:'OTE live',ote_err:'OTE nedostupné',
+  ote_now_lbl:'OTE SPOT CENA NYNÍ',ote_now_unit:'Kč/MWh',
+  ote_min_lbl:'MINIMUM DNES',ote_max_lbl:'MAXIMUM DNES',
+  ote_avg_lbl:'PRŮMĚR DNES',ote_kwh_lbl:'Kč/kWh NYNÍ',
+  ote_note:'Ceny bez DPH a distribuce · spotovaelektrina.cz',
+  ote_note_err:'⚠ OTE API nedostupné — odhad 2 000 Kč/MWh',
+  slider_title:'REDUKCE NABÍJECÍHO VÝKONU',
+  slider_0:'0 kW (bez redukce)',slider_11:'11 kW (full stop)',
+  presets_lbl:'SCÉNÁŘE:',preset_0:'Baseline (0 kW)',preset_11:'Full stop (−11 kW)',
+  reduction_pct:(r,res)=>`${(r/11*100).toFixed(0)} % z 11 kW | výsledný výkon: ${res} kW/vozidlo`,
+  view_phev:'PHEV',view_phev_sub:'Octavia · Superb · Kodiaq',
+  view_bev:'BEV',view_bev_sub:'Enyaq',
+  view_fleet:'FLEET',view_fleet_sub:'PHEV + BEV firemní',
+  view_private:'SOUKROMÉ',view_private_sub:'PHEV + BEV soukromé',
+  view_all:'VŠECHNY VOZY',view_all_sub:'kompletní přehled',
+  seg_phev_fleet:'PHEV Fleet',seg_phev_priv:'PHEV Soukromé',
+  seg_bev_fleet:'BEV Fleet',seg_bev_priv:'BEV Soukromé',
+  date_phev_fleet:'Pracovní den · 21. 1. 2026',date_phev_priv:'Víkend · 25. 1. 2026',
+  date_bev_fleet:'Pracovní den · 22. 1. 2026',date_bev_priv:'Víkend · 25. 1. 2026',
+  kpi_peak:'Špičkové zatížení',kpi_peak_red:'Po redukci (špička)',
+  kpi_energy_saved:'Ušetřeno energie',kpi_money:'Finanční úspora',
+  kpi_baseline_energy:'Celk. energie baseline',
+  kpi_total_energy:'Celková úspora energie',kpi_total_money:'Celková fin. úspora',
+  kpi_peak_drop:'Snížení špičky sítě',kpi_reduction:'Redukce výkonu',
+  kpi_all_title:'∑ Všechny vozy celkem',kpi_total_cars:'Max aut souběžně',
+  per_day:'za den',per_vehicle:'na vozidlo',ote_rates:'dle OTE cen',
+  no_change:'bez změny',reduction_lbl:'snížení',currency:'Kč',
+  chart_load:'ZATÍŽENÍ SÍTĚ',chart_saving:'ÚSPORA ENERGIE',
+  chart_financial:'FINANČNÍ ÚSPORA vs. OTE CENA',
+  chart_all_load:'ZATÍŽENÍ SÍTĚ · VŠECHNY SEGMENTY',
+  chart_all_saving:'ÚSPORA ENERGIE · VŠECHNY SEGMENTY',
+  chart_all_financial:'FINANČNÍ ÚSPORA vs. OTE CENA',
+  chart_baseline:'Baseline kW',chart_reduced:'Po redukci kW',
+  chart_saving_lbl:'Úspora kWh/slot',savings_czk_label:'Úspora Kč',
+  workday:'PRACOVNÍ DEN',weekend:'VÍKEND',
+  table_toggle:'▶ DETAIL TABULKA',table_open:'▼ DETAIL TABULKA',
+  th_slot:'SLOT',th_cars:'AUTA',th_baseline:'BASELINE kW',
+  th_reduced:'PO REDUKCI kW',th_saved_kwh:'ÚSPORA kWh',th_saved_czk:'ÚSPORA Kč',
+},en:{
+  hdr_tag:'// PHEV + BEV FLEET · CZ · SMART CHARGING',
+  hdr_h1:'SAVINGS <em>SIMULATOR</em>',
+  hdr_sub:'charging power management · grid load reduction · OTE spot prices',
+
+  manual_lbl:'⚠ MANUAL OTE PRICE',
+  manual_presets_lbl:'QUICK SELECT:',
+  manual_note:'OTE API unavailable · price applied to all slots',
+  ote_loading:'loading OTE…',ote_live_ok:'OTE live',ote_err:'OTE unavailable',
+  ote_now_lbl:'OTE SPOT PRICE NOW',ote_now_unit:'CZK/MWh',
+  ote_min_lbl:'TODAY MINIMUM',ote_max_lbl:'TODAY MAXIMUM',
+  ote_avg_lbl:'TODAY AVERAGE',ote_kwh_lbl:'CZK/kWh NOW',
+  ote_note:'Prices excl. VAT & distribution · spotovaelektrina.cz',
+  ote_note_err:'⚠ OTE API unavailable — estimate 2,000 CZK/MWh',
+  slider_title:'CHARGING POWER REDUCTION',
+  slider_0:'0 kW (no reduction)',slider_11:'11 kW (full stop)',
+  presets_lbl:'SCENARIOS:',preset_0:'Baseline (0 kW)',preset_11:'Full stop (−11 kW)',
+  reduction_pct:(r,res)=>`${(r/11*100).toFixed(0)} % of 11 kW | resulting power: ${res} kW/vehicle`,
+  view_phev:'PHEV',view_phev_sub:'Octavia · Superb · Kodiaq',
+  view_bev:'BEV',view_bev_sub:'Enyaq',
+  view_fleet:'FLEET',view_fleet_sub:'PHEV + BEV fleet',
+  view_private:'PRIVATE',view_private_sub:'PHEV + BEV private',
+  view_all:'ALL VEHICLES',view_all_sub:'full overview',
+  seg_phev_fleet:'PHEV Fleet',seg_phev_priv:'PHEV Private',
+  seg_bev_fleet:'BEV Fleet',seg_bev_priv:'BEV Private',
+  date_phev_fleet:'Workday · 21 Jan 2026',date_phev_priv:'Weekend · 25 Jan 2026',
+  date_bev_fleet:'Workday · 22 Jan 2026',date_bev_priv:'Weekend · 25 Jan 2026',
+  kpi_peak:'Peak load',kpi_peak_red:'After reduction (peak)',
+  kpi_energy_saved:'Energy saved',kpi_money:'Financial savings',
+  kpi_baseline_energy:'Total baseline energy',
+  kpi_total_energy:'Total energy savings',kpi_total_money:'Total financial savings',
+  kpi_peak_drop:'Grid peak reduction',kpi_reduction:'Power reduction',
+  kpi_all_title:'∑ All vehicles total',kpi_total_cars:'Max simultaneous cars',
+  per_day:'per day',per_vehicle:'per vehicle',ote_rates:'by OTE prices',
+  no_change:'no change',reduction_lbl:'reduction',currency:'CZK',
+  chart_load:'GRID LOAD',chart_saving:'ENERGY SAVINGS',
+  chart_financial:'FINANCIAL SAVINGS vs. OTE PRICE',
+  chart_all_load:'GRID LOAD · ALL SEGMENTS',
+  chart_all_saving:'ENERGY SAVINGS · ALL SEGMENTS',
+  chart_all_financial:'FINANCIAL SAVINGS vs. OTE PRICE',
+  chart_baseline:'Baseline kW',chart_reduced:'After reduction kW',
+  chart_saving_lbl:'Saved kWh/slot',savings_czk_label:'Savings CZK',
+  workday:'WORKDAY',weekend:'WEEKEND',
+  table_toggle:'▶ DETAIL TABLE',table_open:'▼ DETAIL TABLE',
+  th_slot:'SLOT',th_cars:'CARS',th_baseline:'BASELINE kW',
+  th_reduced:'AFTER REDUCTION kW',th_saved_kwh:'SAVED kWh',th_saved_czk:'SAVED CZK',
+}};
+
+const t=k=>T[currentLang][k]||T.cs[k]||k;
+
+// ══════════════════════════════════════════
+// VIEW CONFIG — which segments to show
+// ══════════════════════════════════════════
+const VIEWS={
+  phev:  {segs:['phev_fleet','phev_priv'],  activeClass:'active-phev'},
+  bev:   {segs:['bev_fleet','bev_priv'],   activeClass:'active-bev'},
+  fleet: {segs:['phev_fleet','bev_fleet'], activeClass:'active-fleet'},
+  private:{segs:['phev_priv','bev_priv'],  activeClass:'active-priv'},
+  all:   {segs:['phev_fleet','phev_priv','bev_fleet','bev_priv'], activeClass:'active-all'},
+};
+
+const SEG_META={
+  phev_fleet:{nameKey:'seg_phev_fleet',dateKey:'date_phev_fleet',typeKey:'workday',color:'phev_fleet'},
+  phev_priv: {nameKey:'seg_phev_priv', dateKey:'date_phev_priv', typeKey:'weekend',color:'phev_priv'},
+  bev_fleet: {nameKey:'seg_bev_fleet', dateKey:'date_bev_fleet', typeKey:'workday',color:'bev_fleet'},
+  bev_priv:  {nameKey:'seg_bev_priv',  dateKey:'date_bev_priv',  typeKey:'weekend',color:'bev_priv'},
+};
+
+// ══════════════════════════════════════════
+// TRANSLATIONS APPLY
+// ══════════════════════════════════════════
+function applyTranslations(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const v=T[currentLang][el.getAttribute('data-i18n')];
+    if(v!==undefined&&typeof v==='string') el.innerHTML=v;
+  });
+  const fn=T[currentLang].reduction_pct;
+  if(fn) document.getElementById('reduction-pct').textContent=fn(reduction,(11-reduction).toFixed(1));
+  document.querySelector('#ote-now span').textContent=t('ote_now_unit');
+  renderView();
+}
+
+// ══════════════════════════════════════════
+// THEME / LANG
+// ══════════════════════════════════════════
+function setTheme(th){
+  currentTheme=th;
+  document.body.classList.toggle('light',th==='light');
+  document.getElementById('btn-dark').classList.toggle('active',th==='dark');
+  document.getElementById('btn-light').classList.toggle('active',th==='light');
+  renderView();
+}
+function setLang(lang){
+  currentLang=lang;
+  document.documentElement.lang=lang;
+  document.getElementById('btn-cz').classList.toggle('active',lang==='cs');
+  document.getElementById('btn-en').classList.toggle('active',lang==='en');
+  applyTranslations();
+}
+
+// ══════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════
+function tick(){
+  const n=new Date(), loc=currentLang==='cs'?'cs-CZ':'en-GB';
+  document.getElementById('clock').textContent=n.toLocaleTimeString(loc);
+  document.getElementById('today-date').textContent=currentLang==='cs'
+    ?n.toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit',year:'numeric'})
+    :n.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+setInterval(tick,1000); tick();
+
+// ══════════════════════════════════════════
+// OTE
+// ══════════════════════════════════════════
+const PROXY='https://corsproxy.io/?url=', OTE_BASE='https://spotovaelektrina.cz';
+async function apiFetch(url,json=false){
+  try{const r=await fetch(url);if(!r.ok)throw 0;return json?r.json():r.text();}
+  catch{const r=await fetch(PROXY+encodeURIComponent(url));return json?r.json():r.text();}
+}
+async function loadOte(){
+  setOteBadge('loading',t('ote_loading'));
+  try{
+    const[nowRaw,allRaw]=await Promise.all([
+      apiFetch(`${OTE_BASE}/v1/price/get-actual-price-czk`),
+      apiFetch(`${OTE_BASE}/api/v1/price/get-prices-json-qh`,true),
+    ]);
+    oteNow=parseFloat(nowRaw);
+    if(Array.isArray(allRaw)) oteSlots=allRaw.map(p=>({
+      slot:String(p.hour??0).padStart(2,'0')+':'+String((p.quarterHour??0)*15).padStart(2,'0'),
+      price:p.priceCZK??p.czkPrice??p.price??0
+    }));
+    const pr=oteSlots.map(s=>s.price).filter(p=>!isNaN(p));
+    const mn=Math.min(...pr),mx=Math.max(...pr),av=pr.reduce((a,b)=>a+b,0)/pr.length;
+    document.getElementById('ote-now').innerHTML=`${fmt(oteNow)} <span style="font-size:13px;color:var(--dim)">${t('ote_now_unit')}</span>`;
+    document.getElementById('ote-min').textContent=fmt(mn)+' '+t('ote_now_unit');
+    document.getElementById('ote-max').textContent=fmt(mx)+' '+t('ote_now_unit');
+    document.getElementById('ote-avg').textContent=fmt(av)+' '+t('ote_now_unit');
+    document.getElementById('ote-kwh').textContent=(oteNow/1000).toFixed(2)+' '+(currentLang==='cs'?'Kč':'CZK');
+    setOteBadge('ok',t('ote_live_ok')+' · '+oteSlots.length+' slots');
+    manualMode=false;
+    document.getElementById('manual-price-panel').classList.remove('visible');
+    document.getElementById('ote-note').textContent=t('ote_note');
+  }catch{
+    oteNow=2000;
+    document.getElementById('ote-now').innerHTML=`~2 000 <span style="font-size:13px;color:var(--dim)">${t('ote_now_unit')}</span>`;
+    document.getElementById('ote-note').textContent=t('ote_note_err');
+    setOteBadge('err',t('ote_err'));
+    manualMode=true;
+    document.getElementById('manual-price-panel').classList.add('visible');
+  }
+  simulate();
+}
+function setOteBadge(type,txt){
+  document.getElementById('ote-badge').className='ote-badge '+type;
+  document.getElementById('ote-badge-txt').textContent=txt;
+}
+function getOtePrice(slot){
+  if(manualMode) return manualPrice;
+  const f=oteSlots.find(s=>s.slot===slot);return f?f.price:(oteNow||2000);
+}
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+const fmt=n=>typeof n==='number'?Math.round(n).toLocaleString(currentLang==='cs'?'cs-CZ':'en-GB'):'—';
+const fmt1=n=>typeof n==='number'?n.toFixed(1):'—';
+function cv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+
+// Merge two datasets by slot (sum cars)
+function mergeBySlot(a,b){
+  const map={};
+  [...a,...b].forEach(d=>{map[d.slot]=(map[d.slot]||0)+d.cars});
+  return Object.entries(map).sort((x,y)=>x[0].localeCompare(y[0])).map(([slot,cars])=>({slot,cars}));
+}
+
+// ══════════════════════════════════════════
+// SIMULATION
+// ══════════════════════════════════════════
+function calcSeg(data,red){
+  return data.map(d=>{
+    const baseline=d.cars*POWER, reduced=d.cars*(POWER-red);
+    const savedKwh=d.cars*red*0.25, otePrice=getOtePrice(d.slot);
+    return{slot:d.slot,cars:d.cars,baseline,reduced,savedKwh,savedCzk:savedKwh*(otePrice/1000),otePrice};
+  });
+}
+
+function simulate(){
+  computed={};
+  Object.keys(DS).forEach(k=>{computed[k]=calcSeg(DS[k],reduction)});
+  renderView();
+}
+
+// ══════════════════════════════════════════
+// VIEW SWITCHER
+// ══════════════════════════════════════════
+function setView(v){
+  currentView=v;
+  // hide all views
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`view-${v}`).classList.add('active');
+  // update buttons
+  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active-phev','active-bev','active-fleet','active-priv','active-all'));
+  document.getElementById(`sbtn-${v}`).classList.add(VIEWS[v].activeClass);
+  renderView();
+}
+
+function renderView(){
+  if(!Object.keys(computed).length) return;
+  if(currentView==='all') renderAllView();
+  else render2PanelView(currentView);
+}
+
+// ══════════════════════════════════════════
+// 2-PANEL VIEW RENDERER
+// ══════════════════════════════════════════
+function render2PanelView(view){
+  const[segA,segB]=VIEWS[view].segs;
+  const cA=computed[segA], cB=computed[segB];
+  const mA=SEG_META[segA], mB=SEG_META[segB];
+  const colA=COLORS[mA.color], colB=COLORS[mB.color];
+  const container=document.getElementById(`view-${view}`);
+
+  container.innerHTML=`
+    <!-- segment chips -->
+    <div class="seg-chips">
+      <div class="chip" style="border-color:${colA.line};color:${colA.line}">
+        ${t(mA.nameKey)} <span style="color:var(--dim);font-size:11px;margin-left:6px">${t(mA.dateKey)} · max ${Math.max(...DS[segA].map(d=>d.cars))} ${currentLang==='cs'?'aut':'cars'}</span>
+      </div>
+      <div class="chip" style="border-color:${colB.line};color:${colB.line}">
+        ${t(mB.nameKey)} <span style="color:var(--dim);font-size:11px;margin-left:6px">${t(mB.dateKey)} · max ${Math.max(...DS[segB].map(d=>d.cars))} ${currentLang==='cs'?'aut':'cars'}</span>
+      </div>
+    </div>
+    <!-- KPI A -->
+    ${buildKpiSection(segA,cA,colA.line)}
+    <!-- KPI B -->
+    ${buildKpiSection(segB,cB,colB.line)}
+    <!-- load charts -->
+    <div class="charts-grid">
+      <div class="panel">
+        <div class="panel-title"><span>${t('chart_load')} · ${t(mA.nameKey)}</span>
+          <span class="badge" style="border-color:${colA.line};color:${colA.line}">${t(mA.typeKey)}</span></div>
+        <div class="chart-wrap"><canvas id="ch_load_${segA}"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span>${t('chart_load')} · ${t(mB.nameKey)}</span>
+          <span class="badge" style="border-color:${colB.line};color:${colB.line}">${t(mB.typeKey)}</span></div>
+        <div class="chart-wrap"><canvas id="ch_load_${segB}"></canvas></div>
+      </div>
+    </div>
+    <!-- saving charts -->
+    <div class="charts-grid">
+      <div class="panel">
+        <div class="panel-title"><span>${t('chart_saving')} · ${t(mA.nameKey)}</span><span style="font-size:12px;color:var(--dim2)">[kWh/slot]</span></div>
+        <div class="chart-wrap"><canvas id="ch_save_${segA}"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span>${t('chart_saving')} · ${t(mB.nameKey)}</span><span style="font-size:12px;color:var(--dim2)">[kWh/slot]</span></div>
+        <div class="chart-wrap"><canvas id="ch_save_${segB}"></canvas></div>
+      </div>
+    </div>
+    <!-- financial -->
+    <div class="panel-full">
+      <div class="panel-title">
+        <span>${t('chart_financial')}</span>
+        <span style="font-size:12px;color:var(--dim2)">${t(mA.nameKey)} · ${t(mB.nameKey)} · OTE</span>
+      </div>
+      <div class="chart-wrap-tall"><canvas id="ch_fin_${view}"></canvas></div>
+    </div>
+    <!-- tables -->
+    <div class="charts-grid">
+      <div class="panel">
+        <button class="detail-toggle" onclick="toggleTable('tbl_${segA}')">${t('table_toggle')} · ${t(mA.nameKey)}</button>
+        <div class="detail-table-wrap" id="tbl_${segA}">${buildTable(cA)}</div>
+      </div>
+      <div class="panel">
+        <button class="detail-toggle" onclick="toggleTable('tbl_${segB}')">${t('table_toggle')} · ${t(mB.nameKey)}</button>
+        <div class="detail-table-wrap" id="tbl_${segB}">${buildTable(cB)}</div>
+      </div>
+    </div>
+  `;
+
+  // Update KPI values
+  fillKpis(segA,cA); fillKpis(segB,cB);
+
+  // Charts
+  mkLoadChart(`ch_load_${segA}`,cA,colA);
+  mkLoadChart(`ch_load_${segB}`,cB,colB);
+  mkSavingChart(`ch_save_${segA}`,cA,colA.line);
+  mkSavingChart(`ch_save_${segB}`,cB,colB.line);
+  mkFinancialChart(`ch_fin_${view}`,[[cA,colA.line,t(mA.nameKey)],[cB,colB.line,t(mB.nameKey)]]);
+}
+
+// ══════════════════════════════════════════
+// ALL VIEW RENDERER
+// ══════════════════════════════════════════
+function renderAllView(){
+  const segs=Object.keys(computed);
+  // Combined KPIs
+  const totalEnSaved=segs.reduce((s,k)=>s+computed[k].reduce((a,d)=>a+d.savedKwh,0),0);
+  const totalCzk=segs.reduce((s,k)=>s+computed[k].reduce((a,d)=>a+d.savedCzk,0),0);
+  const peakDropSum=segs.reduce((s,k)=>{
+    const mx=Math.max(...computed[k].map(d=>d.baseline));
+    const mxR=Math.max(...computed[k].map(d=>d.reduced));
+    return s+(mx-mxR);},0);
+  // merge all for max cars
+  const allSlots=DS.bev_fleet.map(d=>d.slot); // 96 slots
+  const maxCars=Math.max(...allSlots.map(sl=>segs.reduce((s,k)=>{
+    const f=DS[k].find(d=>d.slot===sl); return s+(f?f.cars:0);},[0])));
+
+  document.getElementById('all-energy').innerHTML=`${fmt1(totalEnSaved)}<span class="kpi-unit">kWh</span>`;
+  document.getElementById('all-money').innerHTML=`${fmt(totalCzk)}<span class="kpi-unit">${t('currency')}</span>`;
+  document.getElementById('all-peak').innerHTML=`${fmt(peakDropSum)}<span class="kpi-unit">kW</span>`;
+  document.getElementById('all-cars').textContent=fmt(maxCars);
+
+  // Per-segment mini KPI cards
+  const grid=document.getElementById('all-seg-kpis');
+  grid.innerHTML=segs.map(k=>{
+    const c=computed[k], m=SEG_META[k], col=COLORS[m.color];
+    const peak=Math.max(...c.map(d=>d.baseline));
+    const peakR=Math.max(...c.map(d=>d.reduced));
+    const enSaved=c.reduce((a,d)=>a+d.savedKwh,0);
+    const czk=c.reduce((a,d)=>a+d.savedCzk,0);
+    return `<div class="panel" style="border-left:3px solid ${col.line}">
+      <div style="font-family:var(--mono);font-size:13px;color:${col.line};margin-bottom:12px;letter-spacing:1px">${t(m.nameKey)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div class="kpi-lbl">${t('kpi_peak')}</div><div class="kpi-val" style="font-size:20px">${fmt(peak)}<span class="kpi-unit">kW</span></div></div>
+        <div><div class="kpi-lbl">${t('kpi_energy_saved')}</div><div class="kpi-val" style="font-size:20px">${fmt1(enSaved)}<span class="kpi-unit">kWh</span></div></div>
+        <div><div class="kpi-lbl">${t('kpi_peak_red')}</div><div class="kpi-val" style="font-size:20px;color:var(--green)">${fmt(peakR)}<span class="kpi-unit">kW</span></div></div>
+        <div><div class="kpi-lbl">${t('kpi_money')}</div><div class="kpi-val" style="font-size:20px;color:var(--green)">${fmt(czk)}<span class="kpi-unit">${t('currency')}</span></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Combined load chart (all 4 segments)
+  mkChart('chartAllLoad','line',allSlots,segs.map(k=>{
+    const c=computed[k],col=COLORS[SEG_META[k].color];
+    const carMap=Object.fromEntries(c.map(d=>[d.slot,d.reduced]));
+    return{label:t(SEG_META[k].nameKey),data:allSlots.map(s=>carMap[s]??0),
+      borderColor:col.line,backgroundColor:col.fill,borderWidth:2,fill:true,pointRadius:0,tension:.3};
+  }),'kW');
+
+  // Combined saving chart
+  mkChart('chartAllSaving','bar',allSlots,segs.map(k=>{
+    const c=computed[k],col=COLORS[SEG_META[k].color];
+    const saveMap=Object.fromEntries(c.map(d=>[d.slot,d.savedKwh]));
+    return{label:t(SEG_META[k].nameKey),data:allSlots.map(s=>saveMap[s]??0),
+      backgroundColor:col.fill.replace('.18','.7'),borderWidth:0,stack:'s'};
+  }),'kWh');
+
+  // Financial chart
+  mkFinancialChart('chartAllFinancial',segs.map(k=>[computed[k],COLORS[SEG_META[k].color].line,t(SEG_META[k].nameKey)]));
+}
+
+// ══════════════════════════════════════════
+// KPI HTML BUILDER
+// ══════════════════════════════════════════
+function buildKpiSection(segKey,data,color){
+  const m=SEG_META[segKey];
+  return `
+  <div class="kpi-section">
+    <div class="kpi-section-title">
+      <span class="dot" style="background:${color}"></span>
+      <span>${t(m.nameKey)} — ${t('kpi_peak').toLowerCase()} & ${currentLang==='cs'?'úspory':'savings'}</span>
+    </div>
+    <div class="kpi-grid" id="kpig_${segKey}">
+      <div class="kpi" id="kpi_${segKey}_peak_base"><div style="position:absolute;top:0;left:0;width:3px;height:100%;background:${color}"></div>
+        <div class="kpi-lbl">${t('kpi_peak')}</div><div class="kpi-val">—<span class="kpi-unit">kW</span></div><div class="kpi-delta">—</div></div>
+      <div class="kpi" id="kpi_${segKey}_peak_red"><div style="position:absolute;top:0;left:0;width:3px;height:100%;background:${color}"></div>
+        <div class="kpi-lbl">${t('kpi_peak_red')}</div><div class="kpi-val">—<span class="kpi-unit">kW</span></div><div class="kpi-delta">—</div></div>
+      <div class="kpi" id="kpi_${segKey}_energy"><div style="position:absolute;top:0;left:0;width:3px;height:100%;background:${color}"></div>
+        <div class="kpi-lbl">${t('kpi_energy_saved')}</div><div class="kpi-val">—<span class="kpi-unit">kWh</span></div><div class="kpi-delta">${t('per_day')}</div></div>
+      <div class="kpi" id="kpi_${segKey}_money"><div style="position:absolute;top:0;left:0;width:3px;height:100%;background:${color}"></div>
+        <div class="kpi-lbl">${t('kpi_money')}</div><div class="kpi-val">—<span class="kpi-unit">${t('currency')}</span></div><div class="kpi-delta">${t('ote_rates')}</div></div>
+      <div class="kpi" id="kpi_${segKey}_base_e"><div style="position:absolute;top:0;left:0;width:3px;height:100%;background:${color}"></div>
+        <div class="kpi-lbl">${t('kpi_baseline_energy')}</div><div class="kpi-val">—<span class="kpi-unit">kWh</span></div><div class="kpi-delta">${t('per_day')}</div></div>
+    </div>
+  </div>`;
+}
+
+function fillKpis(segKey,data){
+  const baselinePeak=Math.max(...data.map(d=>d.baseline));
+  const reducedPeak=Math.max(...data.map(d=>d.reduced));
+  const totalEnBase=data.reduce((a,d)=>a+d.baseline*0.25,0);
+  const enSaved=data.reduce((a,d)=>a+d.savedKwh,0);
+  const czk=data.reduce((a,d)=>a+d.savedCzk,0);
+  const drop=baselinePeak-reducedPeak, pct=baselinePeak>0?drop/baselinePeak*100:0;
+  const slotPeak=data.find(d=>d.baseline===baselinePeak)?.slot??'—';
+
+  const set=(id,html,deltaHtml,deltaClass='')=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.querySelector('.kpi-val').innerHTML=html;
+    const dEl=el.querySelector('.kpi-delta');
+    if(dEl){dEl.innerHTML=deltaHtml;dEl.className='kpi-delta'+(deltaClass?' '+deltaClass:'');}
+  };
+  set(`kpi_${segKey}_peak_base`,`${fmt(baselinePeak)}<span class="kpi-unit">kW</span>`,`baseline (${slotPeak})`);
+  set(`kpi_${segKey}_peak_red`,`${fmt(reducedPeak)}<span class="kpi-unit">kW</span>`,
+    drop>0?`↓ ${fmt1(pct)} % ${t('reduction_lbl')}`:t('no_change'));
+  set(`kpi_${segKey}_energy`,`${fmt1(enSaved)}<span class="kpi-unit">kWh</span>`,
+    totalEnBase>0?`${fmt1(enSaved/totalEnBase*100)} % ${t('per_day')}`:t('per_day'));
+  set(`kpi_${segKey}_money`,`${fmt(czk)}<span class="kpi-unit">${t('currency')}</span>`,
+    czk>0?`≈ ${(czk/Math.max(enSaved,0.001)).toFixed(2)} ${t('currency')}/kWh`:t('ote_rates'));
+  set(`kpi_${segKey}_base_e`,`${fmt1(totalEnBase)}<span class="kpi-unit">kWh</span>`,t('per_day'));
+}
+
+// ══════════════════════════════════════════
+// CHART HELPERS
+// ══════════════════════════════════════════
+function chartDefaults(){
+  const dim=cv('--dim'),grid=cv('--grid'),acc=cv('--accent'),panel=cv('--panel'),text=cv('--text');
+  return{
+    responsive:true,maintainAspectRatio:false,animation:{duration:220},
+    plugins:{
+      legend:{labels:{color:dim,font:{family:'Share Tech Mono',size:12},boxWidth:14}},
+      tooltip:{backgroundColor:panel,borderColor:cv('--border'),borderWidth:1,
+        titleColor:acc,bodyColor:text,
+        titleFont:{family:'Share Tech Mono',size:13},bodyFont:{family:'Share Tech Mono',size:12}}
+    },
+    scales:{
+      x:{grid:{color:grid},ticks:{color:dim,font:{family:'Share Tech Mono',size:11},maxRotation:0,
+        callback:(v,i,arr)=>{const l=arr[i]?.label??'';return l.endsWith(':00')||l.endsWith(':30')?l:null;}}},
+      y:{grid:{color:grid},ticks:{color:dim,font:{family:'Share Tech Mono',size:11}}}
+    }
+  };
+}
+
+function mkChart(id,type,labels,datasets,yLabel=''){
+  if(charts[id]) charts[id].destroy();
+  const ctx=document.getElementById(id);if(!ctx)return;
+  const cfg=chartDefaults();
+  if(yLabel) cfg.scales.y.title={display:true,text:yLabel,color:cv('--dim'),font:{family:'Share Tech Mono',size:12}};
+  charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:cfg});
+}
+
+function mkLoadChart(id,data,col){
+  mkChart(id,'line',data.map(d=>d.slot),[
+    {label:t('chart_baseline'),data:data.map(d=>d.baseline),
+      borderColor:col.dim,backgroundColor:col.fill.replace('.18','.07'),borderWidth:1.5,fill:true,pointRadius:0,tension:.3},
+    {label:t('chart_reduced'),data:data.map(d=>d.reduced),
+      borderColor:col.line,backgroundColor:col.fill,borderWidth:2,fill:true,pointRadius:0,tension:.3},
+  ],'kW');
+}
+
+function mkSavingChart(id,data,lineColor){
+  mkChart(id,'bar',data.map(d=>d.slot),[
+    {label:t('chart_saving_lbl'),data:data.map(d=>d.savedKwh),
+      backgroundColor:lineColor.replace(')',', .65)').replace('rgb','rgba'),borderWidth:0},
+  ],'kWh');
+}
+
+function mkFinancialChart(id, segArr){
+  if(charts[id]) charts[id].destroy();
+  const ctx=document.getElementById(id);if(!ctx)return;
+  const allSlots=DS.bev_fleet.map(d=>d.slot);
+  const otePrices=allSlots.map(s=>getOtePrice(s));
+  const cfg=chartDefaults();
+  cfg.scales.y.title={display:true,text:t('savings_czk_label'),color:cv('--dim'),font:{family:'Share Tech Mono',size:12}};
+  cfg.scales.y1={type:'linear',position:'right',grid:{display:false},
+    ticks:{color:cv('--accent'),font:{family:'Share Tech Mono',size:11},callback:v=>fmt(v)},
+    title:{display:true,text:t('ote_now_unit'),color:cv('--accent'),font:{family:'Share Tech Mono',size:12}}};
+  const datasets=[
+    {type:'line',label:t('ote_now_unit'),data:otePrices,
+      borderColor:'rgba(0,212,255,.7)',borderWidth:1.5,pointRadius:0,fill:false,tension:.4,yAxisID:'y1'},
+    ...segArr.map(([seg,color,name])=>{
+      const map=Object.fromEntries(seg.map(d=>[d.slot,d.savedCzk]));
+      return{type:'bar',label:name,data:allSlots.map(s=>map[s]??0),
+        backgroundColor:color.replace(')',', .65)').replace('rgb','rgba'),borderWidth:0,yAxisID:'y'};
+    })
+  ];
+  charts[id]=new Chart(ctx,{data:{labels:allSlots,datasets},options:{...cfg,interaction:{mode:'index',intersect:false}}});
+}
+
+// ══════════════════════════════════════════
+// TABLE
+// ══════════════════════════════════════════
+function buildTable(data){
+  const peakVal=Math.max(...data.map(d=>d.baseline));
+  const rows=data.map(d=>`
+    <tr class="${d.baseline===peakVal?'peak-row':d.savedKwh>0?'saving-row':''}">
+      <td style="color:var(--dim)">${d.slot}</td>
+      <td>${d.cars}</td>
+      <td style="color:var(--text-strong)">${fmt(d.baseline)}</td>
+      <td style="color:${d.reduced<d.baseline?'var(--green)':'var(--text-strong)'}">${fmt(d.reduced)}</td>
+      <td style="color:var(--green)">${fmt1(d.savedKwh)}</td>
+      <td style="color:var(--accent)">${fmt(d.otePrice)}</td>
+      <td style="color:var(--green)">${fmt(Math.round(d.savedCzk))}</td>
+    </tr>`).join('');
+  return `<table class="data-table">
+    <thead><tr>
+      <th>${t('th_slot')}</th><th>${t('th_cars')}</th><th>${t('th_baseline')}</th>
+      <th>${t('th_reduced')}</th><th>${t('th_saved_kwh')}</th><th>OTE ${t('ote_now_unit')}</th><th>${t('th_saved_czk')}</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function toggleTable(id){
+  const el=document.getElementById(id);if(!el)return;
+  const btn=el.previousElementSibling;
+  const open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  btn.textContent=(open?t('table_toggle'):t('table_open'))+btn.textContent.slice(btn.textContent.indexOf('·')-1);
+}
+
+// ══════════════════════════════════════════
+// SLIDER
+// ══════════════════════════════════════════
+function onSlider(val){
+  reduction=parseFloat(val);
+  const pct=(reduction/11*100).toFixed(0);
+  document.getElementById('reduction-display').innerHTML=`${reduction.toFixed(1)} <span>kW</span>`;
+  const fn=T[currentLang].reduction_pct;
+  document.getElementById('reduction-pct').textContent=fn(reduction,(11-reduction).toFixed(1));
+  document.getElementById('slider-fill').style.width=pct+'%';
+  document.querySelectorAll('.preset-btn').forEach(b=>{
+    b.classList.remove('active');
+    const v=parseFloat(b.getAttribute('onclick').match(/setPreset\(([^)]+)\)/)[1]);
+    if(v===reduction)b.classList.add('active');
+  });
+  simulate();
+}
+function setPreset(v){reduction=v;document.getElementById('power-slider').value=v;onSlider(v);}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+setView('phev');
+loadOte();
+setInterval(loadOte,5*60*1000);
+</script>
+</body>
+</html>
