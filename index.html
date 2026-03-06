@@ -740,8 +740,11 @@ function toggleSeg(id){
   }
   // destroy all chart instances to prevent memory leaks
   Object.keys(charts).forEach(k=>{charts[k].destroy();delete charts[k];});
-  // hide all views
-  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  // hide all views and clear inactive 2-panel containers to prevent duplicate canvas IDs
+  document.querySelectorAll('.view').forEach(el=>{
+    el.classList.remove('active');
+    if(el.id!==`view-${currentView}`&&el.id!=='view-all') el.innerHTML='';
+  });
   document.getElementById(`view-${currentView}`).classList.add('active');
   // update button highlights
   document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('on'));
