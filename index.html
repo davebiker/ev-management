@@ -190,9 +190,35 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;background:var(--acce
 
 /* ═══════ VIEW VISIBILITY ═══════ */
 .view{display:none}.view.active{display:block}
+
+/* ═══════ AUTH OVERLAY ═══════ */
+.auth-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  background:rgba(6,13,10,.6);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);transition:opacity .5s}
+.auth-overlay.hidden{opacity:0;pointer-events:none}
+.auth-box{background:var(--panel);border:1px solid var(--border2);padding:40px 44px;text-align:center;max-width:380px;width:90%}
+.auth-box .auth-icon{font-size:36px;margin-bottom:12px;color:var(--accent)}
+.auth-box .auth-title{font-family:var(--mono);font-size:14px;letter-spacing:3px;color:var(--dim);margin-bottom:24px}
+.auth-box input{width:100%;font-family:var(--mono);font-size:18px;letter-spacing:4px;text-align:center;
+  padding:14px;border:1px solid var(--border2);background:var(--bg);color:var(--text-strong);outline:none;transition:border-color .2s}
+.auth-box input:focus{border-color:var(--accent)}
+.auth-box input.shake{animation:authShake .4s}
+.auth-box .auth-hint{font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:14px;letter-spacing:1px}
+.auth-box .auth-err{font-family:var(--mono);font-size:12px;color:var(--red);margin-top:10px;min-height:18px}
+@keyframes authShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 </style>
 </head>
 <body>
+
+<!-- AUTH OVERLAY -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-icon">⚡</div>
+    <div class="auth-title">SMART CHARGING SIMULATOR</div>
+    <input type="password" id="auth-input" placeholder="••••••" autocomplete="off" spellcheck="false"/>
+    <div class="auth-err" id="auth-err"></div>
+    <div class="auth-hint" data-i18n="auth_hint">zadejte přístupový kód</div>
+  </div>
+</div>
 <div class="wrap">
 
 <!-- HEADER -->
@@ -478,6 +504,7 @@ const T={cs:{
   table_toggle:'▶ DETAIL TABULKA',table_open:'▼ DETAIL TABULKA',
   th_slot:'SLOT',th_cars:'AUTA',th_baseline:'BASELINE kW',
   th_reduced:'PO REDUKCI kW',th_saved_kwh:'ÚSPORA kWh',th_saved_czk:'ÚSPORA Kč',
+  auth_hint:'zadejte přístupový kód',
 },en:{
   hdr_tag:'// PHEV + BEV FLEET · CZ · SMART CHARGING',
   hdr_h1:'SAVINGS <em>SIMULATOR</em>',
@@ -525,6 +552,7 @@ const T={cs:{
   table_toggle:'▶ DETAIL TABLE',table_open:'▼ DETAIL TABLE',
   th_slot:'SLOT',th_cars:'CARS',th_baseline:'BASELINE kW',
   th_reduced:'AFTER REDUCTION kW',th_saved_kwh:'SAVED kWh',th_saved_czk:'SAVED CZK',
+  auth_hint:'enter access code',
 }};
 
 const t=k=>T[currentLang][k]||T.cs[k]||k;
@@ -1038,8 +1066,41 @@ function onSlider(val){
 function setPreset(v){reduction=v;document.getElementById('power-slider').value=v;onSlider(v);}
 
 // ══════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════
+const AUTH_HASH='553034f07ef6371d97b08d5d84535a96bec3367de7b6a51ad1b54f3fce5fddf9';
+async function hashPass(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+function initAuth(){
+  if(sessionStorage.getItem('auth')==='1'){unlockApp();return;}
+  document.querySelector('.wrap').style.filter='blur(12px)';
+  document.querySelector('.wrap').style.pointerEvents='none';
+  const inp=document.getElementById('auth-input');
+  inp.focus();
+  inp.addEventListener('keydown',async e=>{
+    if(e.key!=='Enter')return;
+    const h=await hashPass(inp.value.trim().toLowerCase());
+    if(h===AUTH_HASH){
+      sessionStorage.setItem('auth','1');
+      unlockApp();
+    } else {
+      inp.classList.remove('shake');void inp.offsetWidth;inp.classList.add('shake');
+      document.getElementById('auth-err').textContent=currentLang==='cs'?'neplatný kód':'invalid code';
+      inp.value='';
+    }
+  });
+}
+function unlockApp(){
+  document.querySelector('.wrap').style.filter='';
+  document.querySelector('.wrap').style.pointerEvents='';
+  const ov=document.getElementById('auth-overlay');
+  ov.classList.add('hidden');
+  setTimeout(()=>ov.remove(),600);
+}
+
+// ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
+initAuth();
 toggleSeg('phev');
 loadOte();
 setInterval(loadOte,5*60*1000);
