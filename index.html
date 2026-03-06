@@ -157,7 +157,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;background:var(--acce
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 .charts-grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px}
 @media(max-width:1100px){.charts-grid-4{grid-template-columns:1fr 1fr}}
-@media(max-width:700px){.charts-grid,.charts-grid-4{grid-template-columns:1fr}}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.charts-grid-4{grid-template-columns:1fr}}
 .panel{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);padding:20px;transition:background .2s}
 .panel-full{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);padding:20px;margin-bottom:12px}
 .panel-title{font-family:var(--mono);font-size:13px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;
@@ -221,6 +222,45 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;background:var(--acce
 .auth-box .auth-hint{font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:14px;letter-spacing:1px}
 .auth-box .auth-err{font-family:var(--mono);font-size:12px;color:var(--red);margin-top:10px;min-height:18px}
 @keyframes authShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+
+/* ═══════ MOBILE RESPONSIVE ═══════ */
+@media(max-width:600px){
+  .wrap{padding:12px 10px 40px}
+  /* R1: Header stacks */
+  header{grid-template-columns:1fr;gap:12px}
+  .hdr-controls{align-items:flex-start}
+  h1{font-size:clamp(22px,6vw,32px)}
+  /* R2: Segment switcher */
+  .seg-switcher{flex-direction:column}
+  .seg-group{flex-wrap:wrap}
+  .seg-group+.seg-group{border-left:none;border-top:3px solid var(--accent)}
+  .seg-group-label{writing-mode:horizontal-tb;text-orientation:mixed;min-width:auto;min-height:auto;padding:6px 8px;border-right:none;border-bottom:1px solid var(--border2)}
+  .seg-btn{min-width:0;padding:10px 12px;font-size:12px}
+  /* R3: OTE bar */
+  .ote-bar{flex-direction:column;align-items:flex-start;gap:12px;padding:12px 14px}
+  .ote-divider{width:100%;height:1px}
+  .ote-note{margin-left:0;text-align:left;max-width:none}
+  /* R4: Slider labels — hide intermediate */
+  .slider-labels span:nth-child(2),.slider-labels span:nth-child(3),
+  .slider-labels span:nth-child(4),.slider-labels span:nth-child(5),
+  .slider-labels span:nth-child(6){display:none}
+  /* R5: Scale buttons larger touch targets */
+  .scale-control{flex-direction:column;align-items:stretch;gap:12px}
+  .scale-btn{padding:12px 16px;font-size:14px;min-height:44px}
+  /* R6: Table horizontal scroll */
+  .detail-table-wrap{overflow-x:auto}
+  .data-table{min-width:600px}
+  /* R8: KPI grid smaller minimum */
+  .kpi-grid{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+  .kpi-val{font-size:clamp(16px,4vw,24px);word-break:break-all}
+  /* Manual price panel */
+  .manual-price-panel{flex-direction:column;align-items:stretch}
+  .manual-price-note{margin-left:0}
+}
+@media(max-width:360px){
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .seg-btn .seg-count{display:none}
+}
 </style>
 </head>
 <body>
@@ -712,20 +752,13 @@ function getOtePrice(slot){
 // HELPERS
 // ══════════════════════════════════════════
 const fmt=n=>typeof n==='number'?Math.round(n).toLocaleString(currentLang==='cs'?'cs-CZ':'en-GB'):'—';
-const fmt1=n=>typeof n==='number'?n.toFixed(1):'—';
+const fmt1=n=>typeof n==='number'?n.toLocaleString(currentLang==='cs'?'cs-CZ':'en-GB',{minimumFractionDigits:1,maximumFractionDigits:1}):'—';
 function cv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
 function toRgba(c,a){
   if(c.startsWith('rgba')) return c.replace(/,\s*[\d.]+\)$/,`,${a})`);
   if(c.startsWith('rgb')) return c.replace('rgb','rgba').replace(')',`,${a})`);
   if(c.startsWith('#')){const n=parseInt(c.slice(1),16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;}
   return c;
-}
-
-// Merge two datasets by slot (sum cars)
-function mergeBySlot(a,b){
-  const map={};
-  [...a,...b].forEach(d=>{map[d.slot]=(map[d.slot]||0)+d.cars});
-  return Object.entries(map).sort((x,y)=>x[0].localeCompare(y[0])).map(([slot,cars])=>({slot,cars}));
 }
 
 // ══════════════════════════════════════════
@@ -930,7 +963,7 @@ function renderAllView(){
     const c=computed[k],col=COLORS[SEG_META[k].color];
     const saveMap=Object.fromEntries(c.map(d=>[d.slot,d.savedKwh]));
     return{label:t(SEG_META[k].nameKey),data:allSlots.map(s=>saveMap[s]??0),
-      backgroundColor:col.fill.replace('.18','.7'),borderWidth:0,stack:'s'};
+      backgroundColor:toRgba(col.line,.7),borderWidth:0,stack:'s'};
   }),'kWh');
 
   // Financial chart
