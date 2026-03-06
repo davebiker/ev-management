@@ -68,7 +68,9 @@ h1 em{color:var(--accent);font-style:normal}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
 /* ═══════ SEGMENT SWITCHER ═══════ */
-.seg-switcher{display:flex;gap:0;margin-bottom:20px;flex-wrap:wrap;border:1px solid var(--border2);overflow:hidden}
+.seg-switcher{display:flex;gap:0;margin-bottom:20px;flex-wrap:wrap;border:1px solid var(--border2);overflow:hidden;align-items:stretch}
+.seg-group{display:flex;flex:1;min-width:0}
+.seg-group+.seg-group{border-left:3px solid var(--accent)}
 .seg-btn{
   font-family:var(--mono);font-size:13px;letter-spacing:1px;padding:12px 20px;
   border:none;border-right:1px solid var(--border2);background:transparent;
@@ -76,17 +78,19 @@ h1 em{color:var(--accent);font-style:normal}
   display:flex;flex-direction:column;align-items:center;gap:4px;
 }
 .seg-btn:last-child{border-right:none}
+.seg-group:last-child .seg-btn:last-child{border-right:none}
 .seg-btn .seg-icon{font-size:18px;line-height:1}
 .seg-btn .seg-name{font-size:12px;letter-spacing:2px}
 .seg-btn .seg-count{font-family:var(--mono);font-size:11px;color:var(--dim2)}
 .seg-btn:hover{background:rgba(120,190,32,.05);color:var(--text)}
-.seg-btn.active{background:var(--accent);color:#000}
-.seg-btn.active .seg-count{color:rgba(0,0,0,.6)}
-.seg-btn.active-phev{background:rgba(120,190,32,.15);border-bottom:3px solid var(--c-phev-fleet);color:var(--c-phev-fleet)}
-.seg-btn.active-bev{background:rgba(46,204,113,.12);border-bottom:3px solid var(--c-bev-fleet);color:var(--c-bev-fleet)}
-.seg-btn.active-fleet{background:rgba(120,190,32,.10);border-bottom:3px solid var(--accent);color:var(--accent)}
-.seg-btn.active-priv{background:rgba(78,205,196,.12);border-bottom:3px solid var(--c-phev-priv);color:var(--c-phev-priv)}
-.seg-btn.active-all{background:rgba(120,190,32,.12);border-bottom:3px solid var(--green);color:var(--green)}
+.seg-btn.on{border-bottom:3px solid}
+.seg-btn.on.s-phev{background:rgba(120,190,32,.15);border-bottom-color:var(--c-phev-fleet);color:var(--c-phev-fleet)}
+.seg-btn.on.s-bev{background:rgba(46,204,113,.12);border-bottom-color:var(--c-bev-fleet);color:var(--c-bev-fleet)}
+.seg-btn.on.s-fleet{background:rgba(120,190,32,.10);border-bottom-color:var(--accent);color:var(--accent)}
+.seg-btn.on.s-private{background:rgba(78,205,196,.12);border-bottom-color:var(--c-phev-priv);color:var(--c-phev-priv)}
+.seg-btn.on.s-all{background:rgba(120,190,32,.12);border-bottom-color:var(--green);color:var(--green)}
+.seg-btn.on .seg-count{color:inherit;opacity:.6}
+.seg-group-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--dim2);padding:0 4px;writing-mode:vertical-lr;text-orientation:mixed;display:flex;align-items:center;justify-content:center;background:rgba(120,190,32,.04);border-right:1px solid var(--border2);min-width:22px}
 
 /* ═══════ OTE BAR ═══════ */
 .ote-bar{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);
@@ -245,29 +249,35 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;background:var(--acce
 
 <!-- SEGMENT SWITCHER -->
 <div class="seg-switcher">
-  <button class="seg-btn active-phev" id="sbtn-phev" onclick="setView('phev')">
-    <span class="seg-icon">🔋</span>
-    <span class="seg-name" data-i18n="view_phev">PHEV</span>
-    <span class="seg-count" data-i18n="view_phev_sub">Octavia · Superb · Kodiaq</span>
-  </button>
-  <button class="seg-btn" id="sbtn-bev" onclick="setView('bev')">
-    <span class="seg-icon">⚡</span>
-    <span class="seg-name" data-i18n="view_bev">BEV</span>
-    <span class="seg-count" data-i18n="view_bev_sub">Enyaq</span>
-  </button>
-  <button class="seg-btn" id="sbtn-fleet" onclick="setView('fleet')">
-    <span class="seg-icon">🏢</span>
-    <span class="seg-name" data-i18n="view_fleet">FLEET</span>
-    <span class="seg-count" data-i18n="view_fleet_sub">PHEV + BEV firemní</span>
-  </button>
-  <button class="seg-btn" id="sbtn-private" onclick="setView('private')">
-    <span class="seg-icon">🏠</span>
-    <span class="seg-name" data-i18n="view_private">SOUKROMÉ</span>
-    <span class="seg-count" data-i18n="view_private_sub">PHEV + BEV soukromé</span>
-  </button>
-  <button class="seg-btn" id="sbtn-all" onclick="setView('all')">
+  <div class="seg-group-label" data-i18n="grp_type">TYP</div>
+  <div class="seg-group">
+    <button class="seg-btn s-phev on" id="sbtn-phev" onclick="toggleSeg('phev')">
+      <span class="seg-icon">🔋</span>
+      <span class="seg-name" data-i18n="view_phev">PHEV</span>
+      <span class="seg-count" data-i18n="view_phev_sub">Octavia · Superb · Kodiaq</span>
+    </button>
+    <button class="seg-btn s-bev" id="sbtn-bev" onclick="toggleSeg('bev')">
+      <span class="seg-icon">⚡</span>
+      <span class="seg-name" data-i18n="view_bev">BEV</span>
+      <span class="seg-count" data-i18n="view_bev_sub">Enyaq</span>
+    </button>
+  </div>
+  <div class="seg-group-label" data-i18n="grp_own">ÚČEL</div>
+  <div class="seg-group">
+    <button class="seg-btn s-fleet" id="sbtn-fleet" onclick="toggleSeg('fleet')">
+      <span class="seg-icon">🏢</span>
+      <span class="seg-name" data-i18n="view_fleet">FLEET</span>
+      <span class="seg-count" data-i18n="view_fleet_sub">PHEV + BEV firemní</span>
+    </button>
+    <button class="seg-btn s-private" id="sbtn-private" onclick="toggleSeg('private')">
+      <span class="seg-icon">🏠</span>
+      <span class="seg-name" data-i18n="view_private">SOUKROMÉ</span>
+      <span class="seg-count" data-i18n="view_private_sub">PHEV + BEV soukromé</span>
+    </button>
+  </div>
+  <button class="seg-btn s-all" id="sbtn-all" onclick="toggleSeg('all')">
     <span class="seg-icon">∑</span>
-    <span class="seg-name" data-i18n="view_all">VŠECHNY VOZY</span>
+    <span class="seg-name" data-i18n="view_all">VŠE</span>
     <span class="seg-count" data-i18n="view_all_sub">kompletní přehled</span>
   </button>
 </div>
@@ -415,6 +425,7 @@ function setManualPrice(val){
 
 
 let currentLang='cs', currentTheme='dark', currentView='phev';
+let activeButtons=new Set(['phev']);
 let computed={}; // cached calc results keyed by segment
 
 // ══════════════════════════════════════════
@@ -438,11 +449,12 @@ const T={cs:{
   slider_0:'0 kW (bez redukce)',slider_11:'11 kW (full stop)',
   presets_lbl:'SCÉNÁŘE:',preset_0:'Baseline (0 kW)',preset_11:'Full stop (−11 kW)',
   reduction_pct:(r,res)=>`${(r/11*100).toFixed(0)} % z 11 kW | výsledný výkon: ${res} kW/vozidlo`,
+  grp_type:'TYP',grp_own:'ÚČEL',
   view_phev:'PHEV',view_phev_sub:'Octavia · Superb · Kodiaq',
   view_bev:'BEV',view_bev_sub:'Enyaq',
   view_fleet:'FLEET',view_fleet_sub:'PHEV + BEV firemní',
   view_private:'SOUKROMÉ',view_private_sub:'PHEV + BEV soukromé',
-  view_all:'VŠECHNY VOZY',view_all_sub:'kompletní přehled',
+  view_all:'VŠE',view_all_sub:'kompletní přehled',
   seg_phev_fleet:'PHEV Fleet',seg_phev_priv:'PHEV Soukromé',
   seg_bev_fleet:'BEV Fleet',seg_bev_priv:'BEV Soukromé',
   date_phev_fleet:'Pracovní den · 21. 1. 2026',date_phev_priv:'Víkend · 25. 1. 2026',
@@ -484,11 +496,12 @@ const T={cs:{
   slider_0:'0 kW (no reduction)',slider_11:'11 kW (full stop)',
   presets_lbl:'SCENARIOS:',preset_0:'Baseline (0 kW)',preset_11:'Full stop (−11 kW)',
   reduction_pct:(r,res)=>`${(r/11*100).toFixed(0)} % of 11 kW | resulting power: ${res} kW/vehicle`,
+  grp_type:'TYPE',grp_own:'USE',
   view_phev:'PHEV',view_phev_sub:'Octavia · Superb · Kodiaq',
   view_bev:'BEV',view_bev_sub:'Enyaq',
   view_fleet:'FLEET',view_fleet_sub:'PHEV + BEV fleet',
   view_private:'PRIVATE',view_private_sub:'PHEV + BEV private',
-  view_all:'ALL VEHICLES',view_all_sub:'full overview',
+  view_all:'ALL',view_all_sub:'full overview',
   seg_phev_fleet:'PHEV Fleet',seg_phev_priv:'PHEV Private',
   seg_bev_fleet:'BEV Fleet',seg_bev_priv:'BEV Private',
   date_phev_fleet:'Workday · 21 Jan 2026',date_phev_priv:'Weekend · 25 Jan 2026',
@@ -668,18 +681,43 @@ function simulate(){
 }
 
 // ══════════════════════════════════════════
-// VIEW SWITCHER
+// VIEW SWITCHER — multi-select groups
 // ══════════════════════════════════════════
-function setView(v){
-  currentView=v;
+const SEG_GROUP={phev:'type',bev:'type',fleet:'own',private:'own',all:'all'};
+
+function toggleSeg(id){
+  if(id==='all'){
+    activeButtons=new Set(['all']);
+  } else {
+    const grp=SEG_GROUP[id];
+    // if coming from a different group or from 'all', reset
+    const cur=[...activeButtons];
+    const curGrp=cur[0]==='all'?null:SEG_GROUP[cur[0]];
+    if(curGrp!==grp){
+      activeButtons=new Set([id]);
+    } else {
+      // same group — toggle
+      if(activeButtons.has(id)){
+        if(activeButtons.size>1) activeButtons.delete(id); // keep at least one
+      } else {
+        activeButtons.add(id);
+      }
+    }
+  }
+  // derive currentView
+  if(activeButtons.has('all')||activeButtons.size>=2){
+    currentView='all';
+  } else {
+    currentView=[...activeButtons][0];
+  }
   // destroy all chart instances to prevent memory leaks
   Object.keys(charts).forEach(k=>{charts[k].destroy();delete charts[k];});
   // hide all views
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
-  document.getElementById(`view-${v}`).classList.add('active');
-  // update buttons
-  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active-phev','active-bev','active-fleet','active-priv','active-all'));
-  document.getElementById(`sbtn-${v}`).classList.add(VIEWS[v].activeClass);
+  document.getElementById(`view-${currentView}`).classList.add('active');
+  // update button highlights
+  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('on'));
+  activeButtons.forEach(id=>document.getElementById(`sbtn-${id}`).classList.add('on'));
   renderView();
 }
 
@@ -1002,7 +1040,7 @@ function setPreset(v){reduction=v;document.getElementById('power-slider').value=
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
-setView('phev');
+toggleSeg('phev');
 loadOte();
 setInterval(loadOte,5*60*1000);
 </script>
