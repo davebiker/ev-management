@@ -1068,18 +1068,17 @@ function setPreset(v){reduction=v;document.getElementById('power-slider').value=
 // ══════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════
-const AUTH_HASH='553034f07ef6371d97b08d5d84535a96bec3367de7b6a51ad1b54f3fce5fddf9';
-async function hashPass(p){const e=new TextEncoder().encode(p);const h=await crypto.subtle.digest('SHA-256',e);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+const AUTH_KEY='aG9uemE=';
+function checkPass(p){return btoa(p.trim().toLowerCase())===AUTH_KEY}
 function initAuth(){
   if(sessionStorage.getItem('auth')==='1'){unlockApp();return;}
   document.querySelector('.wrap').style.filter='blur(12px)';
   document.querySelector('.wrap').style.pointerEvents='none';
   const inp=document.getElementById('auth-input');
   inp.focus();
-  inp.addEventListener('keydown',async e=>{
+  inp.addEventListener('keydown',e=>{
     if(e.key!=='Enter')return;
-    const h=await hashPass(inp.value.trim().toLowerCase());
-    if(h===AUTH_HASH){
+    if(checkPass(inp.value)){
       sessionStorage.setItem('auth','1');
       unlockApp();
     } else {
